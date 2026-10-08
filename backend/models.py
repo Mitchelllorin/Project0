@@ -116,7 +116,7 @@ class GroupRequest(BaseModel):
 
 class Brand(BaseModel):
     name: str = Field('3D Learning Family', min_length=1, max_length=60)
-    subtitle: str = Field('kitchexxxx xxx xxx', max_length=60)
+    subtitle: str = Field('Project Zero — Kitchen Visualizer', max_length=60)
     accent: str = Field('#dca55e', pattern=r'^#[0-9a-fA-F]{6}$')
     logo_url: str = Field('', max_length=2000)
 

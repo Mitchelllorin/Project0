@@ -84,3 +84,14 @@ android-sdk/
 # overlay black-box crash/user-report dumps — session data, never history
 **/.emergent/recordings/
 frontend/node_modules/.cache/default-development/7.pack
+
+# Isolated external-app verification; not part of Project Zero's source.
+/frontend/public/circuitry-preview
+/external/
+.env
+.env.*
+*.env
+credentials.json
+*.key
+.credentials
+frontend/node_modules/.cache/default-development/10.pack
