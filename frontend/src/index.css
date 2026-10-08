@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;450;500;550;600;650;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {--background:150 5% 9%;--foreground:60 8% 91%;--card:150 5% 12%;--card-foreground:60 8% 91%;--popover:150 5% 12%;--popover-foreground:60 8% 91%;--primary:35 63% 62%;--primary-foreground:40 15% 10%;--secondary:140 4% 17%;--secondary-foreground:60 8% 91%;--muted:140 4% 17%;--muted-foreground:135 4% 59%;--accent:140 4% 19%;--accent-foreground:60 8% 91%;--destructive:0 60% 45%;--destructive-foreground:0 0% 98%;--border:140 4% 19%;--input:140 4% 24%;--ring:35 63% 62%;--radius:.375rem;--studio-accent:#dca55e;}
+  * {@apply border-border;box-sizing:border-box;}
+  body {@apply bg-background text-foreground;margin:0;font-family:'IBM Plex Sans',sans-serif;font-size:13px;-webkit-font-smoothing:antialiased;}
+}
+button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:not-allowed}button:focus-visible,a:focus-visible{outline:2px solid var(--studio-accent);outline-offset:3px}button{transition:background-color .18s,color .18s,border-color .18s,opacity .18s}a{color:inherit;text-decoration:none}::selection{background:#dca55e55}*{scrollbar-width:thin;scrollbar-color:#3e433e transparent}svg{flex-shrink:0}h1,h2,h3,p{margin:0}h1,h2,h3{font-family:'Outfit',sans-serif;letter-spacing:0}input,select{max-width:100%;min-width:0}input[type=range]{width:100%;accent-color:var(--studio-accent);height:4px;cursor:pointer}input[type=checkbox]{accent-color:var(--studio-accent)}
