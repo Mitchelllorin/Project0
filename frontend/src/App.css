@@ -34,3 +34,5 @@
 .palette-options button.selected{border-color:var(--studio-accent);background:var(--c229,#323928);color:var(--c230,#dcc79d)}
 .palette-options strong{font-weight:500;font-size:11px}
 .palette-options small{font-size:8px;color:var(--c70,#7f8e6c);font-family:'JetBrains Mono',monospace}
+
+.viewport-hint{font-size:10px;color:var(--c70,#7f8e6c);margin-top:9px;max-width:280px;line-height:1.6}

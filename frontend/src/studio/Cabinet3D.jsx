@@ -1,15 +1,15 @@
-import React,{useMemo,useRef} from 'react';
+import React,{useMemo,useRef,useState} from 'react';
 import {useFrame} from '@react-three/fiber';
-import {Line} from '@react-three/drei';
+import {Line,useCursor} from '@react-three/drei';
 import * as THREE from 'three';
 import {explodedPosition} from './engine';
 import {PartGeometry,Box} from './PartGeometry';
 import {surfaceProps} from './Materials';
 
 function AnimatedPart({part,parts,amount,config,selected,inspect,onInspect,detail}) {
-  const ref=useRef();const target=useMemo(()=>new THREE.Vector3(...explodedPosition(part,parts,amount)),[part,parts,amount]);
+  const ref=useRef();const [hovered,setHovered]=useState(false);useCursor(hovered);const target=useMemo(()=>new THREE.Vector3(...explodedPosition(part,parts,amount)),[part,parts,amount]);
   useFrame((state,delta)=>{if(ref.current){ref.current.position.lerp(target,1-Math.exp(-delta*9));if(ref.current.position.distanceToSquared(target)>.000001)state.invalidate();}});
-  return <group ref={ref} position={part.position.map(n=>n/1000)} rotation={part.rotation} onClick={e=>{e.stopPropagation();onInspect(part.id);}}><PartGeometry part={part} config={config} highlight={inspect===part.id} detail={detail}/></group>;
+  return <group ref={ref} position={part.position.map(n=>n/1000)} rotation={part.rotation} onPointerOver={e=>{e.stopPropagation();setHovered(true);}} onPointerOut={e=>{e.stopPropagation();setHovered(false);}} onClick={e=>{e.stopPropagation();onInspect(part.id);}}><PartGeometry part={part} config={config} highlight={inspect===part.id||hovered} detail={detail}/></group>;
 }
 
 function Fasteners({parts,amount,inspect,onInspect}) {
@@ -38,15 +38,16 @@ function CornerCounter({cabinet,config}) {
   return <group position={[0,.895,0]}><PartGeometry part={{...p,size:[p.size[0],35,p.size[2]],material:'surface'}} config={config}/></group>;
 }
 
-export function Cabinet3D({cabinet,config,amount=0,selected=false,assembly=false,inspected,onSelect,onInspect}) {
+export function Cabinet3D({cabinet,config,amount=0,selected=false,assembly=false,inspected,onSelect,onInspect,onOpenAssembly}) {
   const w=cabinet.width/1000,d=cabinet.depth/1000;
   const detail=assembly||selected;
   const inspect=inspected?.cabinetId===cabinet.id?inspected.partId:null;
-  return <group position={cabinet.position.map(n=>n/1000)} rotation={[0,cabinet.rotation,0]} onClick={e=>{e.stopPropagation();onSelect(cabinet.id);}}>
+  const [hovered,setHovered]=useState(false);useCursor(hovered);
+  return <group position={cabinet.position.map(n=>n/1000)} rotation={[0,cabinet.rotation,0]} onPointerOver={e=>{e.stopPropagation();setHovered(true);}} onPointerOut={e=>{e.stopPropagation();setHovered(false);}} onClick={e=>{e.stopPropagation();onSelect(cabinet.id);}} onDoubleClick={e=>{e.stopPropagation();if(onOpenAssembly)onOpenAssembly();}}>
     {cabinet.parts.filter(p=>(p.category==='panel'&&(detail||!['shelf','drawer-floor','drawer-side','drawer-back'].some(prefix=>p.id.startsWith(prefix))))||p.geometry==='pull'||(detail&&p.category==='hardware')).map(p=><AnimatedPart key={p.id} part={p} parts={cabinet.parts} amount={amount} config={config} inspect={inspect} detail={detail} onInspect={pid=>assembly?onInspect({cabinetId:cabinet.id,partId:pid}):onSelect(cabinet.id)}/>)}
     {detail&&<Fasteners parts={cabinet.parts} amount={amount} inspect={inspect} onInspect={pid=>onInspect({cabinetId:cabinet.id,partId:pid})}/>}
     {!assembly&&(cabinet.kind==='corner'?<CornerCounter cabinet={cabinet} config={config}/>:<Box size={[w+.002,.035,d+.044]} position={[0,.895,.012]} material={surfaceProps(config)}/>)}
-    {selected&&!assembly&&<Line points={[[-w/2,.007,-d/2],[w/2,.007,-d/2],[w/2,.007,d/2+.04],[-w/2,.007,d/2+.04],[-w/2,.007,-d/2]]} color={config.accent||'#dca55e'} lineWidth={2}/>}
+    {(selected||hovered)&&!assembly&&<Line points={[[-w/2,.007,-d/2],[w/2,.007,-d/2],[w/2,.007,d/2+.04],[-w/2,.007,d/2+.04],[-w/2,.007,-d/2]]} color={selected?(config.accent||'#dca55e'):'#93a7c4'} lineWidth={selected?2:1}/>}
     {inspect&&amount>0&&(()=>{const p=cabinet.parts.find(p=>p.id===inspect);return p?<Line points={[p.position.map(n=>n/1000),explodedPosition(p,cabinet.parts,amount)]} color="#dca55e" lineWidth={1} dashed dashSize={.025} gapSize={.02}/>:null;})()}
   </group>;
 }
