@@ -138,6 +138,19 @@ let webpackConfig = {
 };
 
 webpackConfig.devServer = (devServerConfig) => {
+  // Dev-only API proxy: lets a remote/preview dev server reach the backend,
+  // which the browser cannot do via the backend's own localhost. No effect
+  // unless DEV_PROXY_TARGET is set, so normal local development is unchanged.
+  if (process.env.DEV_PROXY_TARGET) {
+    devServerConfig.proxy = [
+      {
+        context: ['/api'],
+        target: process.env.DEV_PROXY_TARGET,
+        changeOrigin: true,
+      },
+    ];
+  }
+
   // Add health check endpoints if enabled
   if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {
     const originalSetupMiddlewares = devServerConfig.setupMiddlewares;
