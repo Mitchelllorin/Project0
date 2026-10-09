@@ -33,6 +33,27 @@ curl -X POST localhost:8001/api/configure -H 'Content-Type: application/json' \
 `backend/tests/test_catalog_engine.py`, alongside golden part-count tests that
 lock the shipped geometry.
 
+## Mobile / touch
+
+The studio is built phone-first for the 3D viewport:
+
+- **App shell** — `100dvh` plus `env(safe-area-inset-*)`, so the canvas, dock and
+  status bar stay on screen behind a notch or home indicator, in portrait and
+  landscape. Short viewports (landscape phones) compress the chrome instead of
+  forcing a taller-than-screen shell.
+- **The viewport is a drag surface** — orbit/pinch never scroll or pull-to-refresh
+  the page, a drag that begins on a cabinet no longer selects it, and long-press
+  text selection is disabled (`src/studio/pointer.js`).
+- **Tap, not double-click** — touch gets an explicit *Assembly* action, because
+  double-click is unreachable with a finger. Hover highlights are suppressed for
+  touch pointers so a highlight never sticks.
+- **Render budget** (`src/studio/device.js`) — phones drop the DPR clamp to 1.25,
+  the shadow map to 1024 and the environment probe to 64: the three costs that
+  dominate a frame on a mobile GPU.
+
+Both thresholds and the tap/drag discrimination are pure functions with unit
+tests (`src/studio/device.test.ts`, `src/studio/pointer.test.ts`).
+
 ## Local development
 
 ### Prerequisites

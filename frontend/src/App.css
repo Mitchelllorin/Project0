@@ -52,3 +52,94 @@
 .arrange-segment{display:flex;gap:2px;padding:2px;background:#131613;border:1px solid #343a31;border-radius:5px}
 .arrange-hint{font-size:8px;color:var(--c70,#7f8e6c);font-family:'JetBrains Mono',monospace}
 .arrange-width{display:flex;align-items:center;gap:8px;font-size:9px}.arrange-width>span{color:#7f8e6c;font-family:'JetBrains Mono',monospace;font-size:8px}.arrange-width .select-wrap select{height:28px;font-size:10px;padding:0 26px 0 9px;min-width:150px}
+
+/* ==========================================================================
+   Mobile / touch optimisation layer.
+   Appended after the breakpoint blocks above, so equal-specificity rules win.
+   Three concerns: the app shell must fit the real viewport (no page scroll),
+   the 3D viewport must not fight browser gestures, and touch targets must be
+   reachable with a thumb.
+   ========================================================================== */
+
+/* iOS inflates text on landscape rotation without this, which breaks the
+   carefully sized hierarchy. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+/* Pull-to-refresh and rubber-banding fire while orbiting the 3D view; the app
+   owns its own scrolling regions, so opt out of the browser's. */
+body{overscroll-behavior:none}
+
+/* The viewport is a drag surface: never select text or show the iOS magnifier. */
+.viewport,.viewport-wrap{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* Orbit / pinch starts on the canvas. three's OrbitControls already sets
+   touch-action:none on connect; this also covers the pre-ready window and any
+   overlay that sits directly over the canvas. */
+.viewport canvas{touch-action:none}
+
+/* Double-tap zoom delay on chrome buttons. */
+button,a,.nav a,[role="button"]{touch-action:manipulation}
+
+/* Panels are scroll containers on a phone; keep momentum and stop scroll
+   chaining into the 3D scene behind them. */
+.left-panel,.right-panel,.configurator,.inspector-body,.document-page{
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+
+@media(max-width:700px){
+  /* The shell must never be taller than the viewport: a fixed 600px min-height
+     pushed the status bar and part of the canvas off-screen on landscape
+     phones. Rows now sum to the real height, with room for the home indicator. */
+  .studio-app{min-height:0;grid-template-rows:106px 49px minmax(0,1fr) calc(23px + env(safe-area-inset-bottom,0px))}
+  .status-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
+  .left-panel{left:calc(44px + env(safe-area-inset-left,0px))}
+  .right-panel{right:0}
+  .studio-header{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px))}
+  /* Thumb-reachable: lift the dock and panel switches above the home indicator. */
+  .view-dock{bottom:calc(31px + env(safe-area-inset-bottom,0px))}
+  .mobile-panel-buttons{bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+  .explode-controls{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+  .viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:calc(206px + env(safe-area-inset-bottom,0px))}
+}
+
+/* Short viewports (landscape phones, split-screen). Chrome is compressed so the
+   3D scene keeps a usable share of a ~390px-tall screen. */
+@media(max-height:640px){
+  /* Row compression is safe anywhere: it only reclaims chrome height. */
+  .studio-app{min-height:0;grid-template-rows:60px 42px minmax(0,1fr) calc(22px + env(safe-area-inset-bottom,0px))}
+  .panel-title{height:58px;padding:12px 16px}
+  .panel-title h2{font-size:15px}
+  .view-dock{bottom:calc(12px + env(safe-area-inset-bottom,0px));height:38px}
+  .mobile-panel-buttons{bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+  .explode-controls{bottom:calc(56px + env(safe-area-inset-bottom,0px));padding:9px 10px 8px}
+  .explode-title{margin-bottom:8px}
+  .arrange-bar{max-height:58%;overflow-y:auto;overscroll-behavior:contain}
+}
+/* Narrow AND short: a phone in landscape or a small tablet split-screen. Only
+   here do we drop decorative copy, because every pixel goes to the 3D scene. */
+@media(max-height:640px) and (max-width:900px){
+  .viewport-heading .viewport-hint,.viewport-eyebrow,.viewport-heading p{display:none}
+  .viewport-heading h1{font-size:19px;margin-top:4px;max-width:min(46vw,240px)}
+}
+@media(max-height:640px) and (orientation:landscape){
+  /* One header row instead of two; the nav moves beside the brand. */
+  .studio-header{display:flex;grid-template-columns:none;grid-template-rows:none;padding:0 14px}
+  .main-navigation{border-top:0;width:auto;flex:1;justify-content:flex-end;gap:14px}
+  .brand small{display:none}
+}
+
+/* Coarse pointer = finger. Enlarge the small chrome controls to a comfortable
+   target without changing the visual weight on desktop. */
+@media(pointer:coarse){
+  /* Taller targets inside the existing rail width — widening the rail would
+     steal horizontal room from the scene on a 390px screen. */
+  .tool-rail button{width:38px;height:44px}
+  .view-dock>button{width:38px;height:34px}
+  .view-segment button{padding:8px 10px}
+  .viewport-top-tools button{padding:10px}
+  .mobile-panel-buttons button{padding:11px 13px}
+  .project-tools .icon-button{width:32px;min-height:30px}
+  .units-toggle button{padding:6px 8px}
+  .filter-tabs button{padding-bottom:11px}
+  .brand-swatches>button,.brand-swatches>input{width:38px;height:38px}
+  .explode-stages button{padding:8px 6px}
+  /* A finger covers ~9mm; keep the range thumbs grabbable. */
+  input[type=range]{height:22px}
+}

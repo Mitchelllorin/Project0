@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {explodedPosition} from './engine';
 import {PartGeometry,Box} from './PartGeometry';
 import {surfaceProps} from './Materials';
+import {onTap} from './pointer';
 
 function AnimatedPart({part,parts,amount,config,selected,inspect,onInspect,detail,open}) {
   const ref=useRef(),swing=useRef();
@@ -20,7 +21,7 @@ function AnimatedPart({part,parts,amount,config,selected,inspect,onInspect,detai
     if(ref.current){ref.current.position.lerp(target,1-Math.exp(-delta*9));if(ref.current.position.distanceToSquared(target)>.000001)state.invalidate();}
     if(swing.current){swing.current.rotation.y=THREE.MathUtils.lerp(swing.current.rotation.y,swingAngle,1-Math.exp(-delta*8));if(Math.abs(swing.current.rotation.y-swingAngle)>.001)state.invalidate();}
   });
-  return <group ref={ref} position={part.position.map(n=>n/1000)} rotation={part.rotation} onPointerOver={e=>{e.stopPropagation();setHovered(true);}} onPointerOut={e=>{e.stopPropagation();setHovered(false);}} onClick={e=>{e.stopPropagation();onInspect(part.id);}}><group ref={swing} position={pivot}><group position={[-pivot[0],0,0]}><PartGeometry part={part} config={config} highlight={inspect===part.id||hovered} detail={detail}/></group></group></group>;
+  return <group ref={ref} position={part.position.map(n=>n/1000)} rotation={part.rotation} onPointerOver={e=>{e.stopPropagation();if(e.pointerType!=='touch')setHovered(true);}} onPointerOut={e=>{e.stopPropagation();setHovered(false);}} onClick={onTap(e=>{e.stopPropagation();onInspect(part.id);})}><group ref={swing} position={pivot}><group position={[-pivot[0],0,0]}><PartGeometry part={part} config={config} highlight={inspect===part.id||hovered} detail={detail}/></group></group></group>;
 }
 
 function Fasteners({parts,amount,inspect,onInspect}) {
@@ -40,7 +41,7 @@ function Fasteners({parts,amount,inspect,onInspect}) {
     ref.current.instanceMatrix.needsUpdate=true;heads.current.instanceMatrix.needsUpdate=true;
     if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;if(heads.current.instanceColor)heads.current.instanceColor.needsUpdate=true;
   });
-  const click=e=>{e.stopPropagation();if(all[e.instanceId])onInspect(all[e.instanceId].id);};
+  const click=onTap(e=>{e.stopPropagation();if(all[e.instanceId])onInspect(all[e.instanceId].id);});
   return <><instancedMesh ref={ref} args={[null,null,all.length]} onClick={click}><cylinderGeometry args={[.5,.35,1,8]}/><meshStandardMaterial metalness={.8} roughness={.27}/></instancedMesh><instancedMesh ref={heads} args={[null,null,all.length]} onClick={click}><cylinderGeometry args={[.5,.3,1,10]}/><meshStandardMaterial metalness={.8} roughness={.27}/></instancedMesh></>;
 }
 
@@ -54,7 +55,7 @@ export function Cabinet3D({cabinet,config,amount=0,selected=false,assembly=false
   const detail=assembly||selected;
   const inspect=inspected?.cabinetId===cabinet.id?inspected.partId:null;
   const [hovered,setHovered]=useState(false);useCursor(hovered);
-  return <group position={cabinet.position.map(n=>n/1000)} rotation={[0,cabinet.rotation,0]} onPointerOver={e=>{e.stopPropagation();setHovered(true);}} onPointerOut={e=>{e.stopPropagation();setHovered(false);}} onClick={e=>{e.stopPropagation();onSelect(cabinet.id);}} onDoubleClick={e=>{e.stopPropagation();if(onOpenAssembly)onOpenAssembly();}}>
+  return <group position={cabinet.position.map(n=>n/1000)} rotation={[0,cabinet.rotation,0]} onPointerOver={e=>{e.stopPropagation();if(e.pointerType!=='touch')setHovered(true);}} onPointerOut={e=>{e.stopPropagation();setHovered(false);}} onClick={onTap(e=>{e.stopPropagation();onSelect(cabinet.id);})} onDoubleClick={onTap(e=>{e.stopPropagation();if(onOpenAssembly)onOpenAssembly();})}>
     {cabinet.parts.filter(p=>(p.category==='panel'&&(detail||open||!['shelf','drawer-floor','drawer-side','drawer-back'].some(prefix=>p.id.startsWith(prefix))))||p.geometry==='pull'||(detail&&p.category==='hardware')).map(p=><AnimatedPart key={p.id} part={p} parts={cabinet.parts} amount={amount} config={config} inspect={inspect} detail={detail} open={open} onInspect={pid=>assembly?onInspect({cabinetId:cabinet.id,partId:pid}):onSelect(cabinet.id)}/>)}
     {detail&&<Fasteners parts={cabinet.parts} amount={amount} inspect={inspect} onInspect={pid=>onInspect({cabinetId:cabinet.id,partId:pid})}/>}
     {!assembly&&(cabinet.kind==='corner'?<CornerCounter cabinet={cabinet} config={config}/>:<Box size={[w+.002,.035,d+.044]} position={[0,.895,.012]} material={surfaceProps(config)}/>)}

@@ -7,9 +7,13 @@ import {useNavigate} from 'react-router-dom';
 import {Cabinet3D} from './Cabinet3D';
 import {Room3D} from './Room3D';
 import {formatDimension,explodedPosition} from './engine';
+import {useDeviceProfile,renderBudget,profileFrom} from './device';
+import {tapGuard,installTapGuard} from './pointer';
 import {Button} from '../components/ui/button';
 import {toast} from 'sonner';
 import * as THREE from 'three';
+
+const HIGH_BUDGET=renderBudget(profileFrom({width:1440,height:900}));
 
 function TouchGestures({onRackDismiss}) {
   const {gl,camera,scene}=useThree();
@@ -87,7 +91,7 @@ function ArrangeBar(){
   </div>;
 }
 
-function Scene({assembly,onOpenAssembly}) {
+function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
   const {scene,config,selected,selectCabinet,explode,inspected,setInspected,camera,update,doorsOpen,arrange,gizmoMode,moveCabinet}=useStudio();
   const gizmo=useRef();
   const chosen=assembly?scene.cabinets.filter(c=>selected.includes(c.id)):scene.cabinets;
@@ -101,9 +105,9 @@ function Scene({assembly,onOpenAssembly}) {
   return <>
     <color attach="background" args={[assembly?'#343a37':config.lighting==='daylight'?'#c7c9c1':'#727a70']}/>
     <ambientLight intensity={config.lighting==='daylight'?1.05:.6}/>
-    <directionalLight position={[-3,7,4]} intensity={config.lighting==='daylight'?3:1.5} color={config.lighting==='daylight'?'#fff6e5':'#ffd5a0'} castShadow shadow-mapSize={[2048,2048]} shadow-bias={-.0003} shadow-normalBias={.02} shadow-camera-left={-5} shadow-camera-right={5} shadow-camera-top={5} shadow-camera-bottom={-5}/>
+    <directionalLight position={[-3,7,4]} intensity={config.lighting==='daylight'?3:1.5} color={config.lighting==='daylight'?'#fff6e5':'#ffd5a0'} castShadow shadow-mapSize={[budget.shadowMapSize,budget.shadowMapSize]} shadow-bias={-.0003} shadow-normalBias={.02} shadow-camera-left={-5} shadow-camera-right={5} shadow-camera-top={5} shadow-camera-bottom={-5}/>
     <directionalLight position={[4,3,-2]} intensity={.8} color="#dae5e1"/>
-    <Environment resolution={128}><Lightformer intensity={3} position={[0,4,0]} rotation={[Math.PI/2,0,0]} scale={[8,8,1]}/><Lightformer intensity={2} position={[-4,2,3]} rotation={[0,Math.PI/2,0]} scale={[4,5,1]}/></Environment>
+    <Environment resolution={budget.environmentResolution}><Lightformer intensity={3} position={[0,4,0]} rotation={[Math.PI/2,0,0]} scale={[8,8,1]}/><Lightformer intensity={2} position={[-4,2,3]} rotation={[0,Math.PI/2,0]} scale={[4,5,1]}/></Environment>
     <group position={offset}>
       {chosen.map(c=>{
         const props={cabinet:c,config,selected:selected.includes(c.id),amount:assembly?explode:0,assembly,inspected,onSelect:selectCabinet,onInspect:setInspected,open:doorsOpen,onOpenAssembly:()=>onOpenAssembly&&onOpenAssembly(c.id)};
@@ -116,7 +120,7 @@ function Scene({assembly,onOpenAssembly}) {
       {assembly&&explode>.02&&<AssemblyVectors cabinets={chosen} amount={explode}/>}
       {!assembly&&!arrange&&selected.length>1&&(()=>{const sel=scene.cabinets.filter(c=>selected.includes(c.id));if(sel.length<2)return null;const xs=sel.flatMap(c=>[-c.width/2,c.width/2].map(h=>c.position[0]+h*Math.abs(Math.cos(c.rotation))));const min=Math.min(...xs)/1000,max=Math.max(...xs)/1000,z=Math.max(...sel.map(c=>c.position[2]))/1000+.7;return <Line points={[[min,.05,z],[max,.05,z]]} color="#c8a15c" lineWidth={1.5}/>;})()}
     </group>
-    {assembly&&<><gridHelper args={[8,40,'#65736b','#454e47']} position={[0,-.17,0]}/><ContactShadows position={[0,-.16,0]} opacity={.32} scale={8} blur={2.8} far={3} frames={1}/></>}
+    {assembly&&<><gridHelper args={[8,40,'#65736b','#454e47']} position={[0,-.17,0]}/><ContactShadows position={[0,-.16,0]} opacity={.32} scale={8} blur={budget.contactShadowBlur} far={3} frames={1}/></>}
     {!assembly&&config.dimensions&&<group position={offset}><Line points={[[0,.04,3.3],[scene.dimensions.footprint_width/1000,.04,3.3]]} color="#657067" lineWidth={1}/>{[0,scene.dimensions.footprint_width/1000].map(x=><Line key={x} points={[[x,.04,3.23],[x,.04,3.37]]} color="#657067" lineWidth={1}/>)}</group>}
     <CameraRig command={camera} assembly={assembly} width={box.w} center={box}/>
     {!assembly&&<TouchGestures onRackDismiss={()=>update({rack:'none'})}/>}
@@ -125,13 +129,15 @@ function Scene({assembly,onOpenAssembly}) {
 
 export function Viewport({assembly=false}) {
   const {scene,config,update,camera,setCamera,presentation,selected,brand,busy,explode,selectCabinet,setInspected,doorsOpen,setDoorsOpen,arrange,setArrange}=useStudio();const navigate=useNavigate();
+  const device=useDeviceProfile();const budget=renderBudget(device);
+  useEffect(()=>installTapGuard(),[]);
   const command=view=>setCamera({view,tick:camera.tick+1});
   const names={oak:'Natural oak',walnut:'American walnut',sage:'Sage green',ivory:'Warm ivory',charcoal:'Soft charcoal'};
   const model=scene?.cabinets.find(c=>c.id===selected[0]);
   return <section className={`viewport ${assembly?'assembly-viewport':''}`} data-testid="kitchen-viewport">
-    <div className="viewport-heading"><div className="viewport-eyebrow" data-testid="viewport-mode"><span className="live-dot"/>{assembly?'ASSEMBLY EXPLORER':'LIVE DESIGN'}</div><h1 data-testid="scene-title">{assembly?(selected.length>1?'Merged assembly':model?.name):'A space. Your signature.'}</h1><p data-testid="scene-material-summary">{assembly?`${selected.join(' + ')} · Euro / 32 mm system`:`${names[config.finish]} / ${config.style==='slab'?'Modern slab':config.style==='shaker'?'Classic shaker':'Fluted front'}`}</p>{assembly?<p className="viewport-hint">Click a component to inspect it</p>:<p className="viewport-hint">Click a cabinet to select · double-click to explore its assembly</p>}</div>
-    <div className="viewport-top-tools"><button data-testid="lighting-toggle" title="Switch lighting" onClick={()=>update({lighting:config.lighting==='daylight'?'evening':'daylight'})}>{config.lighting==='daylight'?<Sun size={15}/>:<Moon size={15}/>}<span>{config.lighting==='daylight'?'Daylight':'Evening'}</span></button>{!assembly&&<button data-testid="doors-toggle" title={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} aria-label={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} onClick={()=>setDoorsOpen(!doorsOpen)}><DoorOpen size={15}/><span>{doorsOpen?"Close doors":"Open doors"}</span></button>}{!assembly&&<button data-testid="arrange-toggle" className={arrange?"active":""} title="Arrange cabinets freely" aria-label="Arrange cabinets" onClick={()=>setArrange(!arrange)}><Move size={15}/><span>{arrange?"Arranging":"Arrange"}</span></button>}<span className="render-quality" data-testid="render-quality"><span/> {busy?'Updating':'Live render'}</span>{config.rack!=='none'&&<button data-testid="dismiss-pot-rack" title="Remove pot rack" aria-label="Remove pot rack" onClick={()=>update({rack:'none'})}><span>{config.rack.charAt(0).toUpperCase()+config.rack.slice(1)} pot rack</span><X size={14}/></button>}</div>
-    <Canvas frameloop="demand" shadows dpr={[1,1.6]} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'}} onPointerMissed={()=>setInspected(null)} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
+    <div className="viewport-heading"><div className="viewport-eyebrow" data-testid="viewport-mode"><span className="live-dot"/>{assembly?'ASSEMBLY EXPLORER':'LIVE DESIGN'}</div><h1 data-testid="scene-title">{assembly?(selected.length>1?'Merged assembly':model?.name):'A space. Your signature.'}</h1><p data-testid="scene-material-summary">{assembly?`${selected.join(' + ')} · Euro / 32 mm system`:`${names[config.finish]} / ${config.style==='slab'?'Modern slab':config.style==='shaker'?'Classic shaker':'Fluted front'}`}</p>{assembly?<p className="viewport-hint">{device.touch?"Tap a component to inspect it":"Click a component to inspect it"}</p>:<p className="viewport-hint">{device.touch?"Tap a cabinet to select · then tap Assembly":"Click a cabinet to select · double-click to explore its assembly"}</p>}</div>
+    <div className="viewport-top-tools"><button data-testid="lighting-toggle" title="Switch lighting" onClick={()=>update({lighting:config.lighting==='daylight'?'evening':'daylight'})}>{config.lighting==='daylight'?<Sun size={15}/>:<Moon size={15}/>}<span>{config.lighting==='daylight'?'Daylight':'Evening'}</span></button>{!assembly&&<button data-testid="doors-toggle" title={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} aria-label={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} onClick={()=>setDoorsOpen(!doorsOpen)}><DoorOpen size={15}/><span>{doorsOpen?"Close doors":"Open doors"}</span></button>}{!assembly&&<button data-testid="arrange-toggle" className={arrange?"active":""} title="Arrange cabinets freely" aria-label="Arrange cabinets" onClick={()=>setArrange(!arrange)}><Move size={15}/><span>{arrange?"Arranging":"Arrange"}</span></button>}{!assembly&&<button data-testid="open-assembly" disabled={!selected.length} title={selected.length?"Explore this cabinet's assembly":"Select a cabinet first"} aria-label="Explore assembly" onClick={()=>selected.length&&navigate('/assembly')}><Layers size={15}/><span>Assembly</span></button>}<span className="render-quality" data-testid="render-quality"><span/> {busy?'Updating':'Live render'}</span>{config.rack!=='none'&&<button data-testid="dismiss-pot-rack" title="Remove pot rack" aria-label="Remove pot rack" onClick={()=>update({rack:'none'})}><span>{config.rack.charAt(0).toUpperCase()+config.rack.slice(1)} pot rack</span><X size={14}/></button>}</div>
+    <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
     {!assembly&&arrange&&<ArrangeBar/>}
     <div className="viewport-corner-label" data-testid="viewport-layout"><BoxIcon size={14}/>{assembly?'COMPONENT VIEW':{ 'l-shape':'L-SHAPED / CONCEPT 01',straight:'LINEAR / CONCEPT 02',galley:'GALLEY / CONCEPT 03'}[config.layout]}{!assembly&&config.dimensions&&<span data-testid="scene-width-dimension"> · {formatDimension(scene.dimensions.footprint_width,config.units)}</span>}</div>
     <div className="view-dock" data-testid="camera-toolbar">
