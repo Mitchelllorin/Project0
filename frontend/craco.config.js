@@ -123,6 +123,15 @@ let webpackConfig = {
         ],
       };
 
+      // Low-memory dev option: ForkTsCheckerWebpackPlugin spawns separate
+      // worker processes with its own heap limit, which is too heavy for
+      // constrained environments. Skip it when DISABLE_TS_CHECKER=true.
+      if (process.env.DISABLE_TS_CHECKER === 'true') {
+        webpackConfig.plugins = webpackConfig.plugins.filter(
+          (plugin) => plugin?.constructor?.name !== 'ForkTsCheckerWebpackPlugin',
+        );
+      }
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
