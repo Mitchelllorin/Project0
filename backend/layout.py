@@ -4,6 +4,13 @@ from assembly import make_parts, H, D, T
 
 
 def build_layout(config):
+    placements=getattr(config,'placements',None)
+    if getattr(config,'custom',False) and placements:
+        names={'base':'Base cabinet','drawers':'Drawer base','corner':'Diagonal corner base','corner-out':'Outside corner base'}
+        return [dict(id=p.id,name=names.get(p.kind,'Base cabinet'),kind=p.kind,width=p.width,height=H,
+                     depth=p.width if p.kind=='corner' else D,
+                     position=[round(p.x,3),0,round(p.z,3)],rotation=p.rotation,parts=make_parts(p.width,p.kind))
+                for p in placements]
     cabinets=[]
     def add(cid,name,kind,width,x,z,rotation=0):
         cabinets.append(dict(id=cid,name=name,kind=kind,width=width,height=H,depth=width if kind=='corner' else D,position=[round(x,3),0,round(z,3)],rotation=rotation,parts=make_parts(width,kind)))

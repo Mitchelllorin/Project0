@@ -10,6 +10,16 @@ class QuoteSettings(BaseModel):
     labor_rate: float = Field(65, ge=0, le=1000)
 
 
+class Placement(BaseModel):
+    """A freely placed cabinet in a custom (arranged) layout, in millimetres."""
+    id: str = Field(min_length=1, max_length=12)
+    kind: Literal['base', 'drawers', 'corner', 'corner-out'] = 'base'
+    width: float = Field(762, ge=304.8, le=1524)
+    x: float = Field(0, ge=-20000, le=20000)
+    z: float = Field(0, ge=-20000, le=20000)
+    rotation: float = Field(0, ge=-6.28319, le=6.28319)
+
+
 class Configuration(BaseModel):
     layout: Literal['l-shape', 'straight', 'galley'] = 'l-shape'
     finish: Literal['oak', 'walnut', 'sage', 'ivory', 'charcoal'] = 'oak'
@@ -28,6 +38,8 @@ class Configuration(BaseModel):
     widths: dict[str, float] = Field(default_factory=dict)
     groups: list[list[str]] = Field(default_factory=list, max_length=10)
     quote: QuoteSettings = Field(default_factory=QuoteSettings)
+    custom: bool = False
+    placements: list[Placement] = Field(default_factory=list, max_length=40)
 
     @field_validator('widths')
     @classmethod

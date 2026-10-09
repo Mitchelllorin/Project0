@@ -83,6 +83,17 @@ def make_parts(width=762.0, kind='base'):
                 for l,dy in enumerate([-16,16]):
                     screw(f'{hid}-cup-{l}',[sign*(width/2-23),y+dy,D/2+2],[0,0,-1],hid)
                     screw(f'{hid}-plate-{l}',[sign*(width/2-T-3),y+dy,D/2-37],[-sign,0,0],hid)
+    if kind=='corner-out':
+        side=1
+        door='door-side'
+        add(door,'Outside-corner return door','panel',[side*(width/2+T/2),(H+TOE)/2,0],[D-2,H-TOE-4,T],[side,0,0],geometry='door',rotation=[0,side*pi/2,0],material='finish')
+        add('pull-side','160 mm bar pull','hardware',[side*(width/2+T/2+35),H-115,0],[10,160,28],[side,0,0],door,'pull',rotation=[0,side*pi/2,0],material='hardware',price=18)
+        for k,y in enumerate([TOE+130,H-130]):
+            hid=f'hinge-side-{k}'
+            add(hid,'35 mm European cup hinge','hardware',[side*(width/2-8),y,0],[35,60,35],[side,0,0],door,'hinge',price=9.5,machining={'cup_diameter_mm':35,'cup_depth_mm':13,'system_pitch_mm':32})
+            for l,dy in enumerate([-16,16]):
+                screw(f'{hid}-cup-{l}',[side*(width/2+2),y+dy,0],[side,0,0],hid)
+                screw(f'{hid}-plate-{l}',[side*(width/2-T-3),y+dy,-37],[side,0,0],hid)
     for side,sign in [('left',-1),('right',1)]:
         for j,y in enumerate([TOE+T*1.5,H-T/2]):
             for k,z in enumerate([-D/2+55,D/2-55]):

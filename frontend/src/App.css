@@ -38,3 +38,17 @@
 .viewport-hint{font-size:10px;color:var(--c70,#7f8e6c);margin-top:9px;max-width:280px;line-height:1.6}
 
 .document-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.ghost-button{background:transparent!important;color:#b6c19f!important;border-color:#4a553a!important;font-size:11px!important;height:33px!important;font-weight:400!important}.ghost-button:hover{background:#323c26!important;color:#e1e6d4!important}
+
+.arrange-bar{position:absolute;z-index:6;bottom:95px;left:18px;width:335px;max-width:calc(100% - 36px);background:#1e231fee;border:1px solid var(--studio-accent);border-radius:7px;padding:14px 15px 12px;box-shadow:0 6px 20px #10180922;color:#b0bd99}
+.arrange-title{display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:10px}
+.arrange-title>span{display:flex;align-items:center;gap:8px}
+.arrange-title strong{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:400;color:var(--studio-accent)}
+.arrange-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.arrange-row button{font-size:9px;display:flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid var(--c114,#4a553a);border-radius:4px;color:#b0bd99;background:transparent}
+.arrange-row button:hover{background:var(--c115,#323c26);color:var(--c92,#e5d3a3)}
+.arrange-row button:disabled{opacity:.35;pointer-events:none}
+.arrange-row button.active{background:var(--c91,#4c5036);color:var(--c92,#e5d3a3);border-color:var(--studio-accent)}
+.arrange-row button.accent{background:var(--studio-accent);color:#242719;border-color:transparent}
+.arrange-segment{display:flex;gap:2px;padding:2px;background:#131613;border:1px solid #343a31;border-radius:5px}
+.arrange-hint{font-size:8px;color:var(--c70,#7f8e6c);font-family:'JetBrains Mono',monospace}
+.arrange-width{display:flex;align-items:center;gap:8px;font-size:9px}.arrange-width>span{color:#7f8e6c;font-family:'JetBrains Mono',monospace;font-size:8px}.arrange-width .select-wrap select{height:28px;font-size:10px;padding:0 26px 0 9px;min-width:150px}

@@ -5,7 +5,7 @@ import { applyPalette, DEFAULT_PALETTE } from './palette';
 import { encodeState, readShareHash } from './share';
 
 export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65}};
+export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],custom:false,placements:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65}};
 const defaultBrand = {name:'3D Learning Family',subtitle:'Project Zero — Kitchen Visualizer',accent:'#dca55e',logo_url:''};
 const Context=createContext(null);
 const readLocal=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio')||'null');}catch{return null;}};
@@ -28,6 +28,7 @@ export function StudioProvider({children}) {
   const [scene,setScene]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false);
   const [selected,setSelected]=useState(['B01']),[explode,setExplode]=useState(0),[inspected,setInspected]=useState(null);
   const [doorsOpen,setDoorsOpen]=useState(false);
+  const [arrange,setArrange]=useState(false),[gizmoMode,setGizmoMode]=useState('translate');
   const [camera,setCamera]=useState({view:'perspective',tick:0}),[mobilePanel,setMobilePanel]=useState(null),[presentation,setPresentation]=useState(false);
   const [tab,setTab]=useState('cabinets'),[saved,setSaved]=useState(false),[retry,setRetry]=useState(0);
   const [history,setHistory]=useState([]),[future,setFuture]=useState([]);
@@ -57,8 +58,15 @@ export function StudioProvider({children}) {
   const selectCabinet=id=>{const group=config.groups.find(g=>g.includes(id));setSelected(group||[id]);setInspected(null);};
   const save=async()=>{setSaving(true);try {await axios.put(`${API}/projects/${projectId}`,{id:projectId,name:'The Atelier Kitchen',configuration:config,brand});setSaved(true);toast.success('Design saved');}catch {toast.error('Could not save. Your local design is still available.');}finally{setSaving(false);}};
   const reset=()=>{setHistory(h=>[...h.slice(-49),config]);setFuture([]);setConfig({...DEFAULT_CONFIG});setSelected(['B01']);setExplode(0);setInspected(null);setSaved(false);toast.success('Kitchen reset to the original concept');};
+  // Free arrangement: placements are explicit cabinet transforms, edited with the gizmo.
+  const asPlacements=()=>config.placements&&config.placements.length?config.placements:(scene?scene.cabinets.map(c=>({id:c.id,kind:c.kind,width:c.width,x:c.position[0],z:c.position[2],rotation:c.rotation})):[]);
+  const moveCabinet=(id,x,z,rotation)=>update({custom:true,placements:asPlacements().map(p=>p.id===id?{...p,x:Math.round(x),z:Math.round(z),rotation:Number(rotation.toFixed(4))}:p)});
+  const addCabinet=kind=>{const list=asPlacements().slice();const id=`N${String(list.filter(p=>p.id.startsWith('N')).length+1).padStart(2,'0')}`;const right=list.reduce((m,p)=>Math.max(m,p.x+(p.width||762)/2),0);list.push({id,kind,width:kind==='corner'||kind==='corner-out'?914.4:762,x:Math.round(right+600),z:304.8,rotation:0});update({custom:true,placements:list});setSelected([id]);};
+  const removeCabinet=id=>{const list=asPlacements().filter(p=>p.id!==id);update({custom:true,placements:list,groups:config.groups.filter(g=>!g.includes(id)).map(g=>g.filter(x=>x!==id)).filter(g=>g.length>1)});setSelected(list.length?[list[0].id]:[]);};
+  const setCabinetWidth=(id,width)=>update({custom:true,placements:asPlacements().map(p=>p.id===id?{...p,width}:p)});
+  const resetArrangement=()=>update({custom:false,placements:[]});
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resetArrangement,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);
