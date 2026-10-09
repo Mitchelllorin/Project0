@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1c211d" />
+        <meta name="theme-color" content="#1d1d1c" />
         <meta name="description" content="3D Learning Family — Project Zero — Kitchen Visualizer. A configurable kitchen and component-level assembly experience." />
         <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/studio-icon.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -24,6 +24,23 @@
         <title>3D Learning Family — Project Zero — Kitchen Visualizer</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+        <script>
+            /* Re-apply the saved interface palette before first paint so there is no theme flash. */
+            (function () {
+                try {
+                    var vars = JSON.parse(localStorage.getItem("kitchen-studio-palette-vars") || "null");
+                    if (!vars) return;
+                    var style = document.documentElement.style;
+                    for (var name in vars) style.setProperty(name, vars[name]);
+                    var bg = vars["--background"];
+                    var meta = document.querySelector('meta[name="theme-color"]');
+                    if (bg && meta) {
+                        var hsl = bg.split(/\s+/);
+                        meta.setAttribute("content", "hsl(" + hsl[0] + ", " + hsl[1] + ", " + hsl[2] + ")");
+                    }
+                } catch (e) {}
+            })();
+        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

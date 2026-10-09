@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { applyPalette, DEFAULT_PALETTE } from './palette';
 
 export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65}};
 const defaultBrand = {name:'3D Learning Family',subtitle:'Project Zero — Kitchen Visualizer',accent:'#dca55e',logo_url:''};
 const Context=createContext(null);
 const readLocal=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio')||'null');}catch{return null;}};
+const readPalette=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio-palette')||'null');}catch{return null;}};
 
 export function StudioProvider({children}) {
   const initial=useRef(readLocal());
@@ -17,6 +19,9 @@ export function StudioProvider({children}) {
     return {...defaultBrand,...previous,subtitle:previous.subtitle==='kitchexxxx xxx xxx'?defaultBrand.subtitle:previous.subtitle};
   });
   const [projectId]=useState(initial.current?.id||crypto.randomUUID());
+  const [palette,setPaletteState]=useState(()=>readPalette()||{...DEFAULT_PALETTE});
+  const setPalette=patch=>setPaletteState(prev=>({...prev,...patch}));
+  useEffect(()=>{applyPalette(palette);try{localStorage.setItem('kitchen-studio-palette',JSON.stringify(palette));}catch{}},[palette]);
   const [scene,setScene]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false);
   const [selected,setSelected]=useState(['B01']),[explode,setExplode]=useState(0),[inspected,setInspected]=useState(null);
   const [camera,setCamera]=useState({view:'perspective',tick:0}),[mobilePanel,setMobilePanel]=useState(null),[presentation,setPresentation]=useState(false);
@@ -42,6 +47,6 @@ export function StudioProvider({children}) {
   const reset=()=>{setHistory(h=>[...h.slice(-49),config]);setFuture([]);setConfig({...DEFAULT_CONFIG});setSelected(['B01']);setExplode(0);setInspected(null);setSaved(false);toast.success('Kitchen reset to the original concept');};
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);
