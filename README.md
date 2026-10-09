@@ -1,1 +1,106 @@
-# Here are your Instructions
+# Project Zero — Kitchen Studio Visualizer
+
+A brandable 3D kitchen configurator and per-fastener assembly / explode engine
+(Phase 0 pitch demo).
+
+- **Frontend** — React 19 + Create React App (via `@craco/craco`) + react-three-fiber / Three.js
+- **Backend** — FastAPI + Pydantic + Motor (MongoDB)
+
+```
+frontend/   React studio UI (port 3000)
+backend/    FastAPI assembly/quote API (port 8001)
+```
+
+## Local development
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|---|---|---|
+| Node.js | >= 20 | `frontend/package.json` targets Node 20+ |
+| Yarn | 1.22 | Declared as `packageManager`; enable with `corepack enable` |
+| Python | 3.11–3.12 | |
+| MongoDB | 6 or 7 | Either Docker (recommended) or a local `mongod` |
+
+### 1. Start MongoDB
+
+With Docker:
+
+```bash
+docker compose up -d mongo
+```
+
+Without Docker, run a local server instead (any install works):
+
+```bash
+mongod --dbpath ./data/db --port 27017
+```
+
+### 2. Backend (port 8001)
+
+```bash
+cd backend
+cp .env.example .env            # adjust if your Mongo lives elsewhere
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+python -m uvicorn server:app --reload --port 8001
+```
+
+`.env` is required — `server.py` reads `MONGO_URL`, `DB_NAME` and
+`CORS_ORIGINS` at import time and will not start without them.
+
+### 3. Frontend (port 3000)
+
+In a second terminal:
+
+```bash
+cd frontend
+cp .env.example .env            # REACT_APP_BACKEND_URL=http://localhost:8001
+corepack yarn install           # (or: npm install)
+corepack yarn start
+```
+
+Open <http://localhost:3000>.
+
+CRA bakes `REACT_APP_BACKEND_URL` in at start time, so restart the dev server
+after changing `frontend/.env`.
+
+### Convenience script
+
+`./dev.sh` does the Mongo + backend + frontend startup above in one step
+(see the script for the exact commands it runs).
+
+## Tests
+
+Backend API tests run against a **live** backend and read its URL from
+`REACT_APP_BACKEND_URL`:
+
+```bash
+cd backend
+REACT_APP_BACKEND_URL=http://localhost:8001 pytest
+```
+
+Runtime + test dependencies are split so a plain
+`pip install -r requirements.txt` no longer fails: the original generated list
+included packages that are not imported by the app (and
+`emergentintegrations==0.2.2`, which is not published on PyPI).
+
+## Ports
+
+| Service | Port |
+|---|---|
+| Frontend dev server | 3000 |
+| Backend API | 8001 |
+| MongoDB | 27017 |
+
+## Known local-dev gotchas
+
+- **`No matching distribution found for emergentintegrations`** — fixed here by
+  trimming `backend/requirements.txt` to the dependencies the backend actually
+  imports. Use `requirements-dev.txt` for tests.
+- **Studio says "The studio could not connect"** — the backend isn't reachable.
+  Check `frontend/.env` has `REACT_APP_BACKEND_URL=http://localhost:8001`, the
+  backend is on 8001, and its `CORS_ORIGINS` includes your frontend origin.
+- **Backend exits immediately** — `backend/.env` is missing. Copy
+  `backend/.env.example`.

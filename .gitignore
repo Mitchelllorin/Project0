@@ -95,3 +95,6 @@ credentials.json
 *.key
 .credentials
 frontend/node_modules/.cache/default-development/10.pack
+
+# Keep the committed example env templates (they match the ".env.*" rule above).
+!.env.example

@@ -1,0 +1,13 @@
+# Local MongoDB for Project Zero / Kitchen Studio.
+#   docker compose up -d mongo
+services:
+  mongo:
+    image: mongo:7
+    container_name: project0-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+volumes:
+  mongo-data:
