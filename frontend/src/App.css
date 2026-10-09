@@ -36,3 +36,5 @@
 .palette-options small{font-size:8px;color:var(--c70,#7f8e6c);font-family:'JetBrains Mono',monospace}
 
 .viewport-hint{font-size:10px;color:var(--c70,#7f8e6c);margin-top:9px;max-width:280px;line-height:1.6}
+
+.document-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.ghost-button{background:transparent!important;color:#b6c19f!important;border-color:#4a553a!important;font-size:11px!important;height:33px!important;font-weight:400!important}.ghost-button:hover{background:#323c26!important;color:#e1e6d4!important}

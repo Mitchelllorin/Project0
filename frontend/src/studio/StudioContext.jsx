@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import axios from 'axios';
 import { toast } from 'sonner';
 import { applyPalette, DEFAULT_PALETTE } from './palette';
+import { encodeState, readShareHash } from './share';
 
 export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65}};
@@ -9,9 +10,11 @@ const defaultBrand = {name:'3D Learning Family',subtitle:'Project Zero — Kitch
 const Context=createContext(null);
 const readLocal=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio')||'null');}catch{return null;}};
 const readPalette=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio-palette')||'null');}catch{return null;}};
+const readHash=()=>readShareHash(window.location.hash);
 
 export function StudioProvider({children}) {
-  const initial=useRef(readLocal());
+  const shared=readHash();
+  const initial=useRef(shared?{id:shared.id,configuration:shared.configuration,brand:shared.brand}:readLocal());
   const [config,setConfig]=useState(()=>({...DEFAULT_CONFIG,...initial.current?.configuration,quote:{...DEFAULT_CONFIG.quote,...initial.current?.configuration?.quote}}));
   const [brand,setBrand]=useState(()=>{
     const previous=initial.current?.brand;
@@ -19,7 +22,7 @@ export function StudioProvider({children}) {
     return {...defaultBrand,...previous,subtitle:previous.subtitle==='kitchexxxx xxx xxx'?defaultBrand.subtitle:previous.subtitle};
   });
   const [projectId]=useState(initial.current?.id||crypto.randomUUID());
-  const [palette,setPaletteState]=useState(()=>readPalette()||{...DEFAULT_PALETTE});
+  const [palette,setPaletteState]=useState(()=>shared?.palette||readPalette()||{...DEFAULT_PALETTE});
   const setPalette=patch=>setPaletteState(prev=>({...prev,...patch}));
   useEffect(()=>{applyPalette(palette);try{localStorage.setItem('kitchen-studio-palette',JSON.stringify(palette));}catch{}},[palette]);
   const [scene,setScene]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false);
@@ -32,6 +35,14 @@ export function StudioProvider({children}) {
   const undo=()=>{if(!history.length)return;const previous=history[history.length-1];setHistory(h=>h.slice(0,-1));setFuture(f=>[config,...f].slice(0,50));setConfig(previous);setSaved(false);};
   const redo=()=>{if(!future.length)return;const next=future[0];setFuture(f=>f.slice(1));setHistory(h=>[...h.slice(-49),config]);setConfig(next);setSaved(false);};
   const canUndo=history.length>0,canRedo=future.length>0;
+  const share=()=>{
+    const encoded=encodeState({id:projectId,configuration:config,brand,palette});
+    const url=`${window.location.origin}${window.location.pathname}#d=${encoded}`;
+    try{window.history.replaceState(null,'',`#d=${encodeURIComponent(encoded)}`);}catch{/* history unavailable */}
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(()=>toast.success('Share link copied to the clipboard')).catch(()=>toast.error('Could not copy the link'));
+    else toast.error('Clipboard unavailable in this browser');
+    return url;
+  };
   useEffect(()=>{
     const controller=new AbortController();
     const timer=setTimeout(async()=>{
@@ -48,6 +59,6 @@ export function StudioProvider({children}) {
   const reset=()=>{setHistory(h=>[...h.slice(-49),config]);setFuture([]);setConfig({...DEFAULT_CONFIG});setSelected(['B01']);setExplode(0);setInspected(null);setSaved(false);toast.success('Kitchen reset to the original concept');};
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);
