@@ -39,7 +39,8 @@ function SystemHoles({w,d,sign}) {
   return <instancedMesh ref={mesh} args={[null,null,42]}><circleGeometry args={[.0025,7]}/><meshBasicMaterial color="#514334" side={THREE.DoubleSide}/></instancedMesh>;
 }
 function Hinge({material}) {
-  return <group><mesh rotation={[Math.PI/2,0,0]} castShadow><cylinderGeometry args={[.0175,.0175,.013,20,1,true]}/><meshStandardMaterial {...material} side={THREE.DoubleSide}/></mesh><Box size={[.05,.057,.003]} position={[0,0,-.007]} material={material}/><Box size={[.014,.025,.048]} position={[0,0,-.028]} material={material}/><Box size={[.026,.052,.004]} position={[0,0,-.053]} material={material}/><mesh position={[0,0,-.057]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.005,.005,.004,12]}/><meshStandardMaterial {...material}/></mesh></group>;
+  // 35 mm cup hinge: cup bored into the door, arm, and a crossing mounting plate on the gable.
+  return <group><mesh rotation={[Math.PI/2,0,0]} castShadow><cylinderGeometry args={[.0175,.0165,.0135,24,1,true]}/><meshStandardMaterial {...material} side={THREE.DoubleSide}/></mesh><Box size={[.016,.011,.03]} position={[0,0,-.016]} material={material}/><Box size={[.031,.05,.0032]} position={[0,0,-.032]} material={material}/><Box size={[.006,.046,.0048]} position={[0,0,-.028]} material={material}/><mesh position={[0,.021,-.032]} rotation={[0,0,Math.PI/2]} castShadow><cylinderGeometry args={[.0034,.0034,.009,10]}/><meshStandardMaterial {...material}/></mesh>{[-1,1].map(s=><mesh key={s} position={[s*.011,.013,-.004]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.0022,.0022,.008,8]}/><meshStandardMaterial {...material}/></mesh>)}</group>;
 }
 export function DetailedScrew({size,material}) {
   const length=size[1]/1000,r=size[0]/2000;
@@ -52,7 +53,7 @@ export function PartGeometry({part,config,highlight=false,detail=false}) {
   if(part.geometry==='gable')return <Gable part={part} material={mat} detail={detail}/>;
   if(part.geometry==='hinge')return <Hinge material={mat}/>;
   if(part.geometry==='screw')return <DetailedScrew size={part.size} material={mat}/>;
-  if(part.geometry==='slide')return <group><Box size={size} material={mat}/><Box size={[size[0]*.5,size[1]*.4,size[2]*.92]} position={[0,.014,.02]} material={{...mat,color:'#d5dad7'}}/><Box size={[.02,.012,.09]} position={[0,.02,.19]} material={{color:'#737b76'}}/></group>;
+  if(part.geometry==='slide')return <group><Box size={size} material={mat}/><Box size={[size[0]*.5,size[1]*.45,size[2]*.94]} position={[0,.014,.02]} material={{...mat,color:'#d5dad7'}}/><Box size={[.012,.02,.07]} position={[0,.022,-size[2]*.42]} material={{color:'#737b76'}}/>{[-.3,0,.3].map((k,i)=><mesh key={i} position={[size[0]*.3,.026,size[2]*k]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.0035,.0035,.004,8]}/><meshStandardMaterial color="#8b938f" metalness={.7} roughness={.3}/></mesh>)}</group>;
   if(part.geometry==='pull'){
     const vertical=size[1]>size[0];return <group><Box size={[size[0],size[1],.01]} position={[0,0,.014]} material={mat}/>{[-1,1].map(s=><Box key={s} size={[.009,.009,.023]} position={[vertical?0:s*size[0]*.43,vertical?s*size[1]*.43:0,0]} material={mat}/>)}</group>;
   }

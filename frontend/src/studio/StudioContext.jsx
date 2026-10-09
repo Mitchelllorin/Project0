@@ -24,6 +24,7 @@ export function StudioProvider({children}) {
   useEffect(()=>{applyPalette(palette);try{localStorage.setItem('kitchen-studio-palette',JSON.stringify(palette));}catch{}},[palette]);
   const [scene,setScene]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false);
   const [selected,setSelected]=useState(['B01']),[explode,setExplode]=useState(0),[inspected,setInspected]=useState(null);
+  const [doorsOpen,setDoorsOpen]=useState(false);
   const [camera,setCamera]=useState({view:'perspective',tick:0}),[mobilePanel,setMobilePanel]=useState(null),[presentation,setPresentation]=useState(false);
   const [tab,setTab]=useState('cabinets'),[saved,setSaved]=useState(false),[retry,setRetry]=useState(0);
   const [history,setHistory]=useState([]),[future,setFuture]=useState([]);
@@ -47,6 +48,6 @@ export function StudioProvider({children}) {
   const reset=()=>{setHistory(h=>[...h.slice(-49),config]);setFuture([]);setConfig({...DEFAULT_CONFIG});setSelected(['B01']);setExplode(0);setInspected(null);setSaved(false);toast.success('Kitchen reset to the original concept');};
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);
