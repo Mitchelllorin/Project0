@@ -1,19 +1,26 @@
 from math import pi, sin, cos
 from collections import defaultdict
-from assembly import make_parts, H, D, T
+from assembly import make_parts
+from recipe import load_catalog
+
+DEFAULT_CATALOG = load_catalog('euro32')
 
 
-def build_layout(config):
+def build_layout(config, catalog=None):
+    cat=catalog or DEFAULT_CATALOG
+    H,D=cat.H,cat.D
     placements=getattr(config,'placements',None)
     if getattr(config,'custom',False) and placements:
-        names={'base':'Base cabinet','drawers':'Drawer base','corner':'Diagonal corner base','corner-out':'Outside corner base'}
+        # Family display names come from the catalog, so a new manufacturer renames its
+        # own products without touching layout code.
+        names={kind:family['name'] for kind,family in cat.families.items()}
         return [dict(id=p.id,name=names.get(p.kind,'Base cabinet'),kind=p.kind,width=p.width,height=H,
                      depth=p.width if p.kind=='corner' else D,
-                     position=[round(p.x,3),0,round(p.z,3)],rotation=p.rotation,parts=make_parts(p.width,p.kind))
+                     position=[round(p.x,3),0,round(p.z,3)],rotation=p.rotation,parts=make_parts(p.width,p.kind,cat))
                 for p in placements]
     cabinets=[]
     def add(cid,name,kind,width,x,z,rotation=0):
-        cabinets.append(dict(id=cid,name=name,kind=kind,width=width,height=H,depth=width if kind=='corner' else D,position=[round(x,3),0,round(z,3)],rotation=rotation,parts=make_parts(width,kind)))
+        cabinets.append(dict(id=cid,name=name,kind=kind,width=width,height=H,depth=width if kind=='corner' else D,position=[round(x,3),0,round(z,3)],rotation=rotation,parts=make_parts(width,kind,cat)))
     widths=[config.widths.get('B01',762),config.widths.get('B02',914.4),config.widths.get('B03',762)]
     x=0
     for i,w in enumerate(widths):
@@ -42,14 +49,14 @@ def build_layout(config):
     return cabinets
 
 
-def dimensions(cabinets):
+def dimensions(cabinets, catalog=None):
     xs,zs=[],[]
     for c in cabinets:
         for x,z in [(-c['width']/2,-c['depth']/2),(c['width']/2,-c['depth']/2),(c['width']/2,c['depth']/2),(-c['width']/2,c['depth']/2)]:
             xs.append(c['position'][0]+x*cos(c['rotation'])+z*sin(c['rotation']))
             zs.append(c['position'][2]-x*sin(c['rotation'])+z*cos(c['rotation']))
     # This template retains separate gables. No gable is silently removed on logical merge.
-    return dict(run_length=round(sum(c['width'] for c in cabinets),1),footprint_width=round(max(xs)-min(xs),1),footprint_depth=round(max(zs)-min(zs),1),height=H,shared_gable_allowance=0,child_ids=[c['id'] for c in cabinets])
+    return dict(run_length=round(sum(c['width'] for c in cabinets),1),footprint_width=round(max(xs)-min(xs),1),footprint_depth=round(max(zs)-min(zs),1),height=(catalog or DEFAULT_CATALOG).H,shared_gable_allowance=0,child_ids=[c['id'] for c in cabinets])
 
 
 def adjacent(a,b):

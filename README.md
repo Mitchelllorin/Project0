@@ -11,6 +11,28 @@ frontend/   React studio UI (port 3000)
 backend/    FastAPI assembly/quote API (port 8001)
 ```
 
+## Catalogs — adding a manufacturer
+
+Catalog **data** (dimensions, thicknesses, joinery, hardware, edge banding,
+labels, price rates) is kept separate from the assembly **rules engine**
+(`backend/recipe.py`). A manufacturer is onboarded by writing one JSON document
+in `backend/catalog/`; the engine resolves it into parts, machining, edge banding
+and pricing with no code change.
+
+- `backend/catalog/euro32.json` — the shipped generic Euro / 32 mm frameless template.
+- `backend/catalog/northline-example.json` — a worked onboarding example.
+- **`backend/CATALOG.md`** — the schema and the three-step onboarding process.
+
+```bash
+curl localhost:8001/api/catalogs     # list catalogs + onboarding status
+curl -X POST localhost:8001/api/configure -H 'Content-Type: application/json' \
+     -d '{"catalog":"northline-example","layout":"straight"}'
+```
+
+`recipe.validate_catalog()` is the machine-checkable contract and is covered by
+`backend/tests/test_catalog_engine.py`, alongside golden part-count tests that
+lock the shipped geometry.
+
 ## Local development
 
 ### Prerequisites

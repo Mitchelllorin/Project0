@@ -38,6 +38,7 @@ class Configuration(BaseModel):
     widths: dict[str, float] = Field(default_factory=dict)
     groups: list[list[str]] = Field(default_factory=list, max_length=10)
     quote: QuoteSettings = Field(default_factory=QuoteSettings)
+    catalog: str = 'euro32'
     custom: bool = False
     placements: list[Placement] = Field(default_factory=list, max_length=40)
 
@@ -67,6 +68,7 @@ class Part(BaseModel):
     material: str = 'plywood'
     price: float = 0
     machining: dict = Field(default_factory=dict)
+    edges: Optional[dict] = None
 
 
 class Cabinet(BaseModel):

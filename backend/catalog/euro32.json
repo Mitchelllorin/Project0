@@ -1,0 +1,60 @@
+{
+  "id": "euro32-frameless",
+  "name": "Euro 32 / Frameless",
+  "revision": "1.0",
+  "units": "mm",
+  "manufacturer": {
+    "id": "generic-frameless",
+    "name": "Generic Frameless",
+    "standard": "Original generic frameless Euro / 32 mm template",
+    "sources": ["https://publications.blum.com/2024/catalogue/en/153/"]
+  },
+  "dimensions": {"height": 876.3, "depth": 609.6, "toe_kick": 101.6, "shelf_height": 470.0},
+  "thickness": {"carcass": 19.05, "back": 6.35, "drawer": 12.0},
+  "joinery": {
+    "dado": {"width": 19.05, "depth": 9.525},
+    "rabbet": {"width": 6.35, "depth": 9.525},
+    "system": {"pitch": 32.0, "front_setback": 37.0, "hole_diameter": 5.0}
+  },
+  "travel": {"panel": 330.0, "hardware": 180.0, "fastener": 170.0},
+  "pricing": {"panel_per_m2": 82.0, "hardware_default": 0.18},
+  "hardware": {
+    "hinge": {"name": "35 mm European cup hinge", "cup_diameter": 35.0, "cup_depth": 13.0, "system_pitch": 32.0, "front_setback": 37.0, "price": 9.5},
+    "hinge_wide": {"name": "35 mm wide-angle cup hinge", "price": 14.5},
+    "slide": {"name": "Soft-close undermount slide", "price": 28.0},
+    "pull": {"name": "160 mm bar pull", "length": 160.0, "price": 18.0},
+    "shelf_pin": {"name": "5 mm shelf support pin", "price": 0.35},
+    "screw_pozi": {"name": "Pozi mounting screw", "length": 17.0, "price": 0.18},
+    "screw_confirmat": {"name": "Confirmat carcass screw", "length": 50.0, "price": 0.18}
+  },
+  "edge_banding": {"material": "ABS", "thickness": 1.0},
+  "edges": {"door": ["front", "handle", "left", "right"], "gable": ["front"], "bottom": ["front"], "back": [], "rail": []},
+  "labels": {
+    "gable": "{side} machined gable",
+    "bottom": "Dado-seated bottom",
+    "back": "Rabbet-seated plywood back",
+    "rail": "Top stretcher rail",
+    "toe": "Recessed toe kick",
+    "shelf": "Adjustable interior shelf",
+    "door": "Full-overlay cabinet door",
+    "drawer_front": "Drawer front",
+    "drawer_base": "Drawer base",
+    "drawer_side": "Drawer box side",
+    "drawer_back": "Drawer box back",
+    "corner_bottom": "Diagonal corner bottom",
+    "corner_shelf": "Diagonal adjustable shelf",
+    "corner_back": "Corner rear gable",
+    "corner_right": "Corner return gable",
+    "corner_left": "Corner left wing",
+    "corner_return": "Corner front wing",
+    "corner_door": "45° diagonal cabinet front",
+    "corner_pull": "Diagonal bar pull",
+    "outside_door": "Outside-corner return door"
+  },
+  "families": {
+    "base": {"name": "Double-door base", "construct": "frameless_base"},
+    "drawers": {"name": "Drawer base", "construct": "frameless_drawers"},
+    "corner": {"name": "Diagonal corner base", "construct": "frameless_corner"},
+    "corner-out": {"name": "Outside corner base", "construct": "frameless_base_with_return"}
+  }
+}

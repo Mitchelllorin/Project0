@@ -9,6 +9,7 @@ import os
 from models import Configuration, SceneResponse, GroupRequest, Project, CatalogItem, ProductAssembly
 from layout import build_layout, dimensions, make_quote, adjacent
 from assembly import make_parts
+from recipe import load_catalog, validate_catalog, available_catalogs
 
 load_dotenv(Path(__file__).parent / '.env')
 client=AsyncIOMotorClient(os.environ['MONGO_URL'])
@@ -25,15 +26,30 @@ async def seed_catalog():
 @api.get('/')
 async def root(): return {'name':'Kitchen Studio Assembly API','version':'1.0.0'}
 
+def resolve_catalog(name):
+    try:
+        catalog=load_catalog(name)
+    except OSError:
+        raise HTTPException(400,f'Unknown catalog {name!r}')
+    errors=validate_catalog(catalog.data)
+    if errors:
+        raise HTTPException(400,f'Catalog {name!r} is not renderable: '+'; '.join(errors[:5]))
+    return catalog
+
+@api.get('/catalogs')
+async def catalogs():
+    return available_catalogs()
+
 @api.get('/catalog',response_model=list[CatalogItem])
 async def catalog():
     return await db.products.find({}, {'_id':0,'parts':0}).to_list(20)
 
 @api.post('/configure',response_model=SceneResponse)
 async def configure(config:Configuration):
-    cabinets=build_layout(config)
+    catalog=resolve_catalog(config.catalog)
+    cabinets=build_layout(config,catalog)
     counts={k:sum(1 for c in cabinets for p in c['parts'] if p['category']==k) for k in ['panel','hardware','fastener']}
-    return dict(cabinets=cabinets,quote=make_quote(cabinets,config),dimensions=dimensions(cabinets),counts=counts)
+    return dict(cabinets=cabinets,quote=make_quote(cabinets,config),dimensions=dimensions(cabinets,catalog),counts=counts)
 
 @api.get('/assemblies/{product_id}',response_model=ProductAssembly)
 async def assembly(product_id:str):
@@ -44,7 +60,8 @@ async def assembly(product_id:str):
 @api.post('/groups/preview')
 async def group_preview(request:GroupRequest):
     ids=list(dict.fromkeys(request.cabinet_ids))
-    cabinets=[c for c in build_layout(request.configuration) if c['id'] in ids]
+    catalog=resolve_catalog(request.configuration.catalog)
+    cabinets=[c for c in build_layout(request.configuration,catalog) if c['id'] in ids]
     if len(ids)<2 or len(cabinets)!=len(ids): raise HTTPException(400,'Select at least two existing cabinets')
     reached={cabinets[0]['id']}
     for _ in cabinets:
@@ -52,7 +69,7 @@ async def group_preview(request:GroupRequest):
             if a['id'] in reached:
                 reached.update(b['id'] for b in cabinets if adjacent(a,b))
     if len(reached)!=len(cabinets): raise HTTPException(400,'Only neighboring cabinets can be merged')
-    return {**dimensions(cabinets),'parts_count':sum(len(c['parts']) for c in cabinets),'geometry_fused':False}
+    return {**dimensions(cabinets,catalog),'parts_count':sum(len(c['parts']) for c in cabinets),'geometry_fused':False}
 
 @api.put('/projects/{project_id}',response_model=Project)
 async def save_project(project_id:str,project:Project):

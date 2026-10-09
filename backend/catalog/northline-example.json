@@ -1,0 +1,60 @@
+{
+  "id": "northline-18mm",
+  "name": "Northline Cabinetry / 18 mm Euro",
+  "revision": "0.1",
+  "units": "mm",
+  "manufacturer": {
+    "id": "northline-example",
+    "name": "Northline Cabinetry (example)",
+    "standard": "Hypothetical onboarding example — not a real product line",
+    "sources": []
+  },
+  "dimensions": { "height": 720.0, "depth": 560.0, "toe_kick": 100.0, "shelf_height": 380.0 },
+  "thickness": { "carcass": 18.0, "back": 5.0, "drawer": 12.0 },
+  "joinery": {
+    "dado": { "width": 18.0, "depth": 8.0 },
+    "rabbet": { "width": 5.0, "depth": 8.0 },
+    "system": { "pitch": 32.0, "front_setback": 37.0, "hole_diameter": 5.0 }
+  },
+  "travel": { "panel": 300.0, "hardware": 160.0, "fastener": 150.0 },
+  "pricing": { "panel_per_m2": 96.0, "hardware_default": 0.25 },
+  "hardware": {
+    "hinge": { "name": "Northline NH-110 clip-top hinge", "cup_diameter": 35.0, "cup_depth": 12.5, "system_pitch": 32.0, "front_setback": 37.0, "price": 4.10 },
+    "hinge_wide": { "name": "Northline NH-155 wide-angle hinge", "price": 5.90 },
+    "slide": { "name": "Northline NS-45 undermount runner", "price": 21.50 },
+    "pull": { "name": "Northline bar pull 160", "price": 9.80 },
+    "shelf_pin": { "name": "Northline Ø5 shelf pin", "price": 0.06 },
+    "screw_pozi": { "name": "Northline Pozi 4 × 17", "price": 0.05 },
+    "screw_confirmat": { "name": "Northline Confirmat 7 × 50", "price": 0.11 }
+  },
+  "edge_banding": { "material": "PVC", "thickness": 2.0 },
+  "edges": { "door": ["front", "handle", "left", "right"], "gable": ["front"], "bottom": ["front"] },
+  "labels": {
+    "gable": "{side} carcass side",
+    "bottom": "Northline base panel",
+    "back": "Northline back panel",
+    "rail": "Northline top rail",
+    "toe": "Northline toe kick",
+    "shelf": "Northline adjustable shelf",
+    "door": "Northline door front",
+    "drawer_front": "Northline drawer front",
+    "drawer_base": "Northline drawer base",
+    "drawer_side": "Northline drawer side",
+    "drawer_back": "Northline drawer back",
+    "corner_bottom": "Northline corner base",
+    "corner_shelf": "Northline corner shelf",
+    "corner_back": "Northline corner back",
+    "corner_left": "Northline corner left side",
+    "corner_right": "Northline corner right side",
+    "corner_return": "Northline corner return",
+    "corner_door": "Northline diagonal door",
+    "corner_pull": "Northline corner pull",
+    "outside_door": "Northline return door"
+  },
+  "families": {
+    "base": { "name": "Northline double-door base", "construct": "frameless_base" },
+    "drawers": { "name": "Northline 3-drawer base", "construct": "frameless_drawers" },
+    "corner": { "name": "Northline diagonal corner", "construct": "frameless_corner" },
+    "corner-out": { "name": "Northline return base", "construct": "frameless_base_with_return" }
+  }
+}
