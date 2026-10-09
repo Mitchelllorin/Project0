@@ -86,6 +86,23 @@ Runtime + test dependencies are split so a plain
 included packages that are not imported by the app (and
 `emergentintegrations==0.2.2`, which is not published on PyPI).
 
+### Remote / preview dev server
+
+When the dev server runs somewhere other than your machine (a cloud VM, a
+preview host), the browser can't reach the backend on its own `localhost`.
+Two optional env flags on `yarn start` handle that:
+
+```bash
+REACT_APP_BACKEND_URL= DEV_PROXY_TARGET=http://127.0.0.1:8001 DISABLE_TS_CHECKER=true yarn start
+```
+
+- `DEV_PROXY_TARGET` — proxies same-origin `/api/*` from the dev server to the
+  backend, so set `REACT_APP_BACKEND_URL=` (empty) and the app calls `/api`.
+- `DISABLE_TS_CHECKER` — skips the separate TypeScript type-checker worker
+  processes, which cut peak memory roughly in half (useful on low-RAM VMs).
+
+Both are opt-in and have no effect on a normal local `yarn start`.
+
 ## Ports
 
 | Service | Port |
