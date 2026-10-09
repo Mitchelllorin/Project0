@@ -1,0 +1,170 @@
+{
+  "app_context": {
+    "app_type": "3D Interactive Studio Experience",
+    "name": "3D Learning Family - Kitchen Studio Visualizer",
+    "description": "B2B pitch demo and parametric 3D kitchen studio configurator featuring real fastener-level assembly explode, corner diagonal geometry, cabinet merge/unmerge logic, dual dimension readouts, togglable ceiling pot racks, and live manufacturer white-labeling.",
+    "theme": "Dark Luxury Industrial Studio (Dark Mode Native)",
+    "target_audience": "Cabinet Manufacturers, Architectural Designers, Kitchen Showrooms, B2B Pitch Prospects"
+  },
+  "typography": {
+    "font_family_heading": "Cabinet Grotesk, Outfit, sans-serif",
+    "font_family_body": "JetBrains Mono, IBM Plex Sans, sans-serif",
+    "font_family_mono": "JetBrains Mono, monospace",
+    "scale": {
+      "hero_title": "text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight",
+      "section_heading": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "subsection_heading": "text-lg sm:text-xl font-semibold tracking-normal",
+      "card_title": "text-base font-semibold",
+      "body": "text-sm sm:text-base leading-relaxed font-normal",
+      "caption_mono": "text-xs font-mono tracking-wider uppercase",
+      "badge": "text-xs font-mono font-medium tracking-widest uppercase"
+    },
+    "pairing_strategy": "Industrial Precision Pair: Display Sans for bold headlines and status callouts + Monospace for dimension callouts, fastener counts, assembly vectors, and BOM calculation."
+  },
+  "colors": {
+    "archetype": "Architectural Obsidian & Tactical Warm Gold (ARCHETYPE 2 & 5 Hybrid)",
+    "palette": {
+      "background": "#0D0F12",
+      "surface_base": "#14171D",
+      "surface_card": "#1C2029",
+      "surface_card_hover": "#252B37",
+      "border": "#2E3545",
+      "border_highlight": "#47536B",
+      "primary_accent": "#D97706",
+      "primary_accent_hover": "#F59E0B",
+      "accent_amber": "#F59E0B",
+      "accent_cyan": "#06B6D4",
+      "accent_emerald": "#10B981",
+      "accent_rose": "#F43F5E",
+      "text_primary": "#F8FAFC",
+      "text_secondary": "#94A3B8",
+      "text_muted": "#64748B",
+      "viewport_bg": "#0B0C0E",
+      "fastener_screw_highlight": "#38BDF8",
+      "fastener_hinge_highlight": "#F59E0B",
+      "fastener_slide_highlight": "#10B981"
+    },
+    "tinted_grey_rule": "Neutrals are subtly tinted with slate indigo (#0D0F12 / #1C2029) to create deep cinematic contrast without lifeless pure black.",
+    "contrast_standards": "WCAG AA / APCA compliant text contrast. High contrast on text overlays over glass panels."
+  },
+  "grids_and_layouts": {
+    "mode": "Full-bleed 3D Studio Workspace with Floating Tool Dock & Collapsible Inspector Panels",
+    "main_layout": "Full screen viewport (h-screen w-screen overflow-hidden grid grid-cols-12 relative bg-[#0D0F12])",
+    "structure": {
+      "header_nav": "Fixed top bar (z-50 h-14 w-full bg-[#14171D]/80 backdrop-blur-xl border-b border-[#2E3545] px-4 flex items-center justify-between)",
+      "left_sidebar": "Col-span-3 lg:col-span-2 absolute top-16 left-4 z-40 w-80 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl bg-[#14171D]/90 backdrop-blur-xl border border-[#2E3545] p-4 shadow-2xl",
+      "center_3d_viewport": "Absolute inset-0 z-0 bg-gradient-to-b from-[#0F1218] to-[#08090C]",
+      "right_inspector": "Absolute top-16 right-4 z-40 w-96 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl bg-[#14171D]/90 backdrop-blur-xl border border-[#2E3545] p-4 shadow-2xl space-y-4",
+      "bottom_dock": "Absolute bottom-4 left-1/2 -translate-x-1/2 z-40 bg-[#1C2029]/95 backdrop-blur-2xl border border-[#2E3545] px-6 py-3 rounded-full flex items-center gap-4 shadow-2xl"
+    }
+  },
+  "surface_strategies": {
+    "glassmorphism": "backdrop-blur-xl bg-[#14171D]/85 border border-[#2E3545] shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+    "card_style": "bg-[#1C2029] border border-[#2E3545] rounded-xl p-4 hover:border-[#47536B] transition-colors",
+    "active_state": "ring-2 ring-[#D97706] bg-[#252B37] border-transparent"
+  },
+  "key_functionalities_and_ui": {
+    "brand_customizer": "Pitch mode top toolbar allow real-time client logo insertion, custom brand name update, and primary accent color swatches.",
+    "dimension_unit_toggle": "Instant toggle between Metric (mm) and Imperial (inches) across all parametric indicators, bounding boxes, and BOM items.",
+    "fastener_explode_inspector": "Staged slider (0% to 100%) and stage buttons (Assembled -> Panels -> Hardware -> Fasteners) separating screws, hinges, and slides along real 3D assembly vectors.",
+    "corner_turned_section": "Hero cabinet preset button loading true L-shaped / diagonal carcass geometry with 45-degree angled face.",
+    "merge_unmerge_logic": "Select 2+ adjacent base cabinets -> Merge button. Computes primary Logical Run Length (e.g. 1524mm / 60in) and secondary Wall Footprint (e.g. 1524x610mm). Maintains underlying child fasteners for explode engine.",
+    "ceiling_pot_rack_system": "Hidden by default ceiling system. Double-tap/toggle header icon turns on ceiling layer with selectable pot rack types (Industrial Steel Frame, Rustic Wood Beam, Brass Hanging Ring, Modern Track Grid).",
+    "illustrative_bom_and_quote": "Live pricing readout panel with configurable pricing parameters (labor rate, finish multiplier, fastener count surcharge) and exportable itemized BOM list."
+  },
+  "3d_libraries_and_steps": {
+    "primary_library": "@react-three/fiber with @react-three/drei and Three.js",
+    "render_pipeline": [
+      "Procedural PBR materials for Oak, Walnut, Matte Black Poly, Quartz Countertop, Stainless Steel, Brass, Subway Backsplash",
+      "Soft shadow plane and contact shadows under cabinet legs",
+      "OrbitControls with smooth damping enabled",
+      "Fastener instancing for screws/dowels during explode state",
+      "Dynamic dimension vector lines in 3D canvas using Drei Html or Line components"
+    ],
+    "lighting": "Environment studio preset with key directional light at intensity 1.5, fill ambient light at 0.4, and soft spot highlight on active cabinet."
+  },
+  "image_urls": {
+    "swatch_textures": [
+      {
+        "category": "Wood Finishes",
+        "description": "Natural Oak Grain PBR Texture",
+        "url": "https://images.unsplash.com/photo-1546484475-7f7bd55792da?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        "category": "Wood Finishes",
+        "description": "Walnut Dark Grain Texture",
+        "url": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        "category": "Countertops",
+        "description": "White Calacatta Marble Surface Texture",
+        "url": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        "category": "Backsplash",
+        "description": "Subway Tile Kitchen Wall",
+        "url": "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=600&q=80"
+      }
+    ],
+    "manufacturer_logos": [
+      {
+        "category": "Pitch Demo Brands",
+        "description": "Apex Cabinetry Pro Logo",
+        "url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=200&q=80"
+      }
+    ]
+  },
+  "motion": {
+    "framer_motion_usage": "Animate panel drawer slides, tab switching, explode stage badges, and modal open states.",
+    "hover_states": "All action buttons must have explicit micro-interactions: transform scale 1.02, brightened border, glowing shadow.",
+    "reduced_motion": "Respect prefers-reduced-motion media query by disabling continuous spinning and instant-snapping 3D camera controls."
+  },
+  "accessibility_and_testing": {
+    "data_testid_rule": "ALL interactive components, swatches, sliders, buttons, inputs, tabs, and readouts MUST include explicit kebab-case data-testid attributes.",
+    "test_id_examples": [
+      "data-testid=\"header-brand-title\"",
+      "data-testid=\"unit-toggle-mm-inch\"",
+      "data-testid=\"explode-slider\"",
+      "data-testid=\"explode-stage-panel-button\"",
+      "data-testid=\"merge-cabinets-button\"",
+      "data-testid=\"unmerge-cabinets-button\"",
+      "data-testid=\"preset-corner-cabinet-button\"",
+      "data-testid=\"toggle-ceiling-pot-rack-button\"",
+      "data-testid=\"pot-rack-select\"",
+      "data-testid=\"material-swatch-oak\"",
+      "data-testid=\"bom-total-quote-readout\"",
+      "data-testid=\"logical-run-length-display\"",
+      "data-testid=\"wall-footprint-display\""
+    ],
+    "contrast_check": "Ensure hover states set both bg and text color explicitly. Example: hover:bg-[#D97706] hover:text-white."
+  },
+  "component_paths_js": {
+    "main_app": "/app/frontend/src/App.js",
+    "header": "/app/frontend/src/components/studio/StudioHeader.js",
+    "viewport": "/app/frontend/src/components/studio/KitchenViewport3D.js",
+    "configurator_panel": "/app/frontend/src/components/studio/ConfiguratorPanel.js",
+    "explode_inspector": "/app/frontend/src/components/studio/ExplodeInspectorPanel.js",
+    "merge_manager": "/app/frontend/src/components/studio/MergeDimensionManager.js",
+    "bom_quote_drawer": "/app/frontend/src/components/studio/BOMQuoteDrawer.js",
+    "pot_rack_manager": "/app/frontend/src/components/studio/PotRackManager.js",
+    "branding_modal": "/app/frontend/src/components/studio/PitchBrandingModal.js"
+  },
+  "instructions_to_main_agent": [
+    "Note: Frontend uses JavaScript (.js / .jsx) files. Do NOT use TypeScript annotations or .tsx extensions in components.",
+    "Build a full-bleed 3D kitchen studio workspace rather than a generic landing page.",
+    "Implement @react-three/fiber 3D canvas as the core experience with procedural 3D cabinet rendering (base cabinets, corner L-shaped diagonal carcass, drawers, doors, undermount slides, 35mm cup hinges, 32mm system holes, and screws).",
+    "Support genuine fastener-level exploded assembly where screws and hinges animate outward along X/Y/Z vectors based on stage slider (0% to 100%).",
+    "Include dual dimension indicators: Logical Run Length (primary) and Wall Footprint (secondary) in both mm and inches.",
+    "Implement Merge / Unmerge functionality for adjacent units that computes combined dimensions while keeping child fastener arrays intact for explode inspect mode.",
+    "Implement invisible/hidden by default ceiling feature with a header toggle and double-tap gesture that enables selectable pot-rack styles.",
+    "Add a live pitch customization bar allowing prospective cabinet manufacturers to drop in their company name, logo URL, and accent color.",
+    "Provide a detailed illustrative BOM and Quote calculation breakdown panel with parameter toggles.",
+    "Add data-testid to every interactive and data display element for testing."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": {
+    "anti_ai_slop": "Avoid generic light SaaS themes or simple centered cards. Use a rich dark studio environment with crisp borders, glassmorphism overlays, and precise industrial typography.",
+    "spacing": "Generous spacing system (p-4 to p-8 inside cards) to avoid text-border collisions.",
+    "hover_states": "ALWAYS set explicit text color on hover alongside background changes.",
+    "transitions": "Use specific CSS transitions (transition-colors, transition-transform) rather than transition: all."
+  }
+}
