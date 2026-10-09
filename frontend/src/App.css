@@ -143,3 +143,21 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
   /* A finger covers ~9mm; keep the range thumbs grabbable. */
   input[type=range]{height:22px}
 }
+
+/* Explode panel: it floats over the exploded assembly and swallows orbit drags
+   in its footprint, so it can be collapsed to a pill and restored. Keeping the
+   `explode-controls` class in the collapsed state preserves the layout rules
+   that lift the mobile panel buttons clear of it. */
+.explode-title-actions{display:flex;align-items:center;gap:9px}
+.explode-collapse{display:grid;place-items:center;width:24px;height:24px;border-radius:5px;background:transparent;border:0;color:var(--c152);opacity:.7}
+.explode-collapse:hover,.explode-collapse:focus-visible{opacity:1;background:var(--c150)}
+.explode-controls.is-collapsed{width:auto;padding:0;border-radius:999px}
+.explode-expand{display:flex;align-items:center;gap:9px;width:100%;padding:11px 15px;background:transparent;border:0;border-radius:999px;color:var(--c152);font-size:11px}
+.explode-expand:hover,.explode-expand:focus-visible{color:var(--c155)}
+.explode-expand span{white-space:nowrap}
+.explode-expand strong{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;color:var(--studio-accent)}
+@media(pointer:coarse){
+  /* The collapse/reopen controls are primary touch targets. */
+  .explode-collapse{width:34px;height:34px}
+  .explode-expand{padding:13px 18px;min-height:44px}
+}
