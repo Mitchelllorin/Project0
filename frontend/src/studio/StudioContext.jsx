@@ -27,7 +27,7 @@ export function StudioProvider({children}) {
     const timer=setTimeout(async()=>{
       setBusy(true);
       try {const {data}=await axios.post(`${API}/configure`,config,{signal:controller.signal});setScene(data);setError('');setSelected(ids=>{const valid=ids.filter(id=>data.cabinets.some(c=>c.id===id));return valid.length?valid:[data.cabinets[0].id];});}
-      catch(e){if(!axios.isCancel(e))setError('The studio could not connect. Your design is safe.');}
+      catch(e){if(!axios.isCancel(e))setError(`The studio could not reach the assembly service${process.env.REACT_APP_BACKEND_URL?` at ${process.env.REACT_APP_BACKEND_URL}`:''}. Your design is safe.`);}
       finally{if(!controller.signal.aborted)setBusy(false);}
     },120);
     return()=>{clearTimeout(timer);controller.abort();};

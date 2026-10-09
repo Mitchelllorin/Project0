@@ -58,6 +58,7 @@ function Scene({assembly}) {
   const {scene,config,selected,selectCabinet,explode,inspected,setInspected,camera,update}=useStudio();
   const chosen=assembly?scene.cabinets.filter(c=>selected.includes(c.id)):scene.cabinets;
   const box=useMemo(()=>{
+    if(!chosen.length)return {x:0,z:0,w:0,d:0};
     const min=Math.min(...chosen.map(c=>c.position[0]-c.width/2)),max=Math.max(...chosen.map(c=>c.position[0]+c.width/2));
     const zmin=Math.min(...chosen.map(c=>c.position[2]-c.depth/2)),zmax=Math.max(...chosen.map(c=>c.position[2]+c.depth/2));
     return {x:(min+max)/2000,z:(zmin+zmax)/2000,w:(max-min)/1000,d:(zmax-zmin)/1000};

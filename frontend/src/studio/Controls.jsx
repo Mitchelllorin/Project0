@@ -7,6 +7,19 @@ export const SectionHeading=({children,detail})=><div className="section-heading
 export const Toggle=({id,label,checked,onChange,detail})=><div className="toggle-row"><div><label htmlFor={id}>{label}</label>{detail&&<small data-testid={`${id}-detail`}>{detail}</small>}</div><Switch id={id} data-testid={id} checked={checked} onCheckedChange={onChange} aria-label={label}/></div>;
 export const Select=({id,label,value,onChange,children})=><label className="select-label" htmlFor={id}>{label&&<span>{label}</span>}<div className="select-wrap"><select id={id} data-testid={id} value={value} onChange={e=>onChange(e.target.value)}>{children}</select><ChevronDown size={14}/></div></label>;
 
+const LOOKS=[
+  {id:'atelier',name:'Atelier oak',detail:'Oak / Calacatta / Brass',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',lighting:'daylight'},
+  {id:'study',name:'Walnut study',detail:'Walnut / Noir / Matte black',finish:'walnut',style:'shaker',countertop:'noir',surface:'polished',backsplash:'marble',hardware:'black',lighting:'evening'},
+  {id:'sage',name:'Sage minimal',detail:'Sage / Concrete / Steel',finish:'sage',style:'slab',countertop:'concrete',surface:'honed',backsplash:'none',hardware:'steel',lighting:'daylight'},
+  {id:'ivory',name:'Ivory classic',detail:'Ivory / Calacatta / Brass',finish:'ivory',style:'shaker',countertop:'calacatta',surface:'polished',backsplash:'tile',hardware:'brass',lighting:'daylight'},
+  {id:'noir',name:'Charcoal noir',detail:'Charcoal / Noir / Matte black',finish:'charcoal',style:'fluted',countertop:'noir',surface:'honed',backsplash:'marble',hardware:'black',lighting:'evening'},
+];
+function SignatureLooks(){
+  const {config,update}=useStudio();
+  const active=l=>config.finish===l.finish&&config.style===l.style&&config.countertop===l.countertop;
+  return <section><SectionHeading detail="one tap">Signature looks</SectionHeading><div className="look-options">{LOOKS.map(l=><button key={l.id} data-testid={`preset-${l.id}`} aria-pressed={active(l)} className={active(l)?'selected':''} onClick={()=>update({finish:l.finish,style:l.style,countertop:l.countertop,surface:l.surface,backsplash:l.backsplash,hardware:l.hardware,lighting:l.lighting})}><span className={`look-dot swatch-${l.finish}`}/><span className="look-meta"><strong>{l.name}</strong><small>{l.detail}</small></span>{active(l)&&<Check size={13}/>}</button>)}</div></section>;
+}
+
 function FinishSwatches(){
   const {config,update}=useStudio();
   const finishes=[['oak','Natural oak'],['walnut','Walnut'],['sage','Sage'],['ivory','Ivory'],['charcoal','Charcoal']];
@@ -24,6 +37,7 @@ export function Configurator(){
       <section><SectionHeading>Ceiling layer</SectionHeading><Toggle id="ceiling-toggle" label="Visible ceiling" checked={config.ceiling} onChange={v=>update({ceiling:v})}/><label className="range-label" htmlFor="ceiling-opacity">Opacity <span data-testid="ceiling-opacity-value">{Math.round(config.ceiling_opacity*100)}%</span></label><input type="range" id="ceiling-opacity" data-testid="ceiling-opacity" min="0" max="1" step=".01" value={config.ceiling_opacity} onChange={e=>update({ceiling_opacity:Number(e.target.value)})}/></section>
       <section><SectionHeading>Hanging pot rack</SectionHeading><div className="rack-options">{[['none','No rack'],['steel','Industrial steel'],['wood','Oak beam'],['brass','Brass ring'],['grid','Modern grid']].map(([value,label])=><button key={value} data-testid={`pot-rack-${value}`} className={config.rack===value?'selected':''} onClick={()=>update({rack:value})}><span className={`rack-preview rack-${value}`}><i/><i/><i/></span><span>{label}</span>{config.rack===value&&<Check size={14}/>}</button>)}</div></section>
     </>:<>
+      <SignatureLooks/>
       <section><SectionHeading>Door style</SectionHeading><div className="style-options">{[['slab','Modern slab'],['shaker','Shaker'],['fluted','Fluted']].map(([key,label])=><button key={key} className={config.style===key?'selected':''} data-testid={`style-${key}`} onClick={()=>update({style:key})}><span className={`door-preview door-${key}`}><i/></span><span>{label}</span></button>)}</div></section>
       <section><FinishSwatches/></section>
       <section><SectionHeading>Countertop</SectionHeading><div className="counter-options">{[['calacatta','Calacatta'],['concrete','Concrete'],['noir','Noir stone']].map(([key,label])=><button key={key} data-testid={`countertop-${key}`} className={config.countertop===key?'selected':''} onClick={()=>update({countertop:key})}><span className={`counter-preview counter-${key}`}>{config.countertop===key&&<Check size={13}/>}</span><span>{label}</span></button>)}</div><div className="surface-row"><span>Surface</span><div className="small-segment">{['honed','polished'].map(key=><button key={key} data-testid={`surface-${key}`} onClick={()=>update({surface:key})} className={config.surface===key?'active':''}>{key}</button>)}</div></div></section>
