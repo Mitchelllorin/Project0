@@ -1,0 +1,52 @@
+# One client, one instance: a branded studio, its API and its own database.
+#
+#   cp .env.prod.example .env      # then edit it
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Everything a client's instance *is* — its branding and the catalogue it ships —
+# comes from .env. No code is edited and nothing is rebuilt to change it; see DEPLOY.md.
+name: kitchen-studio
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    # Deliberately not published: only the API needs to reach the database.
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ${DB_NAME:-kitchen_studio}
+      # The public origin of this instance. Only the browser's own origin matters,
+      # because nginx proxies /api same-origin.
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      BRAND_NAME: ${BRAND_NAME:-}
+      BRAND_SUBTITLE: ${BRAND_SUBTITLE:-}
+      BRAND_ACCENT: ${BRAND_ACCENT:-}
+      BRAND_LOGO_URL: ${BRAND_LOGO_URL:-}
+      DEFAULT_CATALOG: ${DEFAULT_CATALOG:-}
+    depends_on:
+      - mongo
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_BACKEND_URL: ""
+        REACT_APP_BRAND_NAME: ${BRAND_NAME:-}
+        REACT_APP_BRAND_SUBTITLE: ${BRAND_SUBTITLE:-}
+        REACT_APP_BRAND_ACCENT: ${BRAND_ACCENT:-}
+        REACT_APP_BRAND_LOGO_URL: ${BRAND_LOGO_URL:-}
+        REACT_APP_DEFAULT_CATALOG: ${DEFAULT_CATALOG:-}
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:80"
+    depends_on:
+      - api
+
+volumes:
+  mongo-data:

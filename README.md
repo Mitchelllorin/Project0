@@ -33,6 +33,23 @@ curl -X POST localhost:8001/api/configure -H 'Content-Type: application/json' \
 `backend/tests/test_catalog_engine.py`, alongside golden part-count tests that
 lock the shipped geometry.
 
+## Deploying a client's instance
+
+One instance is one client: a branded studio, its API and its own database, started by
+one command and configured entirely by environment variables.
+
+```bash
+cp .env.prod.example .env     # branding, public origin, shipped catalog
+./deploy.sh up                # builds and starts web + api + mongo
+./deploy.sh doctor            # machine, config and liveness
+```
+
+Branding and the shipped catalogue are read twice, on purpose: baked into the bundle at
+build time so the first paint is already the client's brand, and served at
+`GET /api/deployment` at runtime so an instance can be re-branded without rebuilding.
+**`DEPLOY.md`** is the handoff guide — configuration, catalogue onboarding, backups, TLS
+and the post-deploy verification checklist.
+
 ## Mobile / touch
 
 The studio is built phone-first for the 3D viewport:

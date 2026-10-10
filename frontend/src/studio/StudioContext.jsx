@@ -3,10 +3,14 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { applyPalette, DEFAULT_PALETTE } from './palette';
 import { encodeState, readShareHash } from './share';
+import { buildTimeDeployment, fetchDeployment, initialBrand, adoptServerBrand } from './deployment';
 
 export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],custom:false,placements:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65}};
-const defaultBrand = {name:'3D Learning Family',subtitle:'Project Zero — Kitchen Visualizer',accent:'#dca55e',logo_url:''};
+// This install's own identity, baked in at build time. A visitor's saved or shared
+// branding overrides it; the server's copy (fetched below) can re-brand a running
+// deployment without a rebuild.
+const DEPLOYMENT = buildTimeDeployment();
 const Context=createContext(null);
 const readLocal=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio')||'null');}catch{return null;}};
 const readPalette=()=>{try {return JSON.parse(localStorage.getItem('kitchen-studio-palette')||'null');}catch{return null;}};
@@ -16,11 +20,7 @@ export function StudioProvider({children}) {
   const shared=readHash();
   const initial=useRef(shared?{id:shared.id,configuration:shared.configuration,brand:shared.brand}:readLocal());
   const [config,setConfig]=useState(()=>({...DEFAULT_CONFIG,...initial.current?.configuration,quote:{...DEFAULT_CONFIG.quote,...initial.current?.configuration?.quote}}));
-  const [brand,setBrand]=useState(()=>{
-    const previous=initial.current?.brand;
-    if(!previous)return defaultBrand;
-    return {...defaultBrand,...previous,subtitle:previous.subtitle==='kitchexxxx xxx xxx'?defaultBrand.subtitle:previous.subtitle};
-  });
+  const [brand,setBrand]=useState(()=>initialBrand(initial.current?.brand));
   const [projectId]=useState(initial.current?.id||crypto.randomUUID());
   const [palette,setPaletteState]=useState(()=>shared?.palette||readPalette()||{...DEFAULT_PALETTE});
   const setPalette=patch=>setPaletteState(prev=>({...prev,...patch}));
@@ -55,6 +55,17 @@ export function StudioProvider({children}) {
     return()=>{clearTimeout(timer);controller.abort();};
   },[config,retry]);
   useEffect(()=>{localStorage.setItem('kitchen-studio',JSON.stringify({id:projectId,configuration:config,brand}));document.documentElement.style.setProperty('--studio-accent',brand.accent);},[config,brand,projectId]);
+  // Adopt the identity the server was configured with, unless this visitor already has
+  // one of their own — a saved design, a share link, or branding they are editing now.
+  useEffect(()=>{
+    let cancelled=false;
+    fetchDeployment(API).then(deployment=>{
+      if(cancelled||!deployment)return;
+      setBrand(prev=>adoptServerBrand(prev,deployment.brand));
+      if(deployment.catalog)setConfig(prev=>prev.catalog?prev:{...prev,catalog:deployment.catalog});
+    });
+    return()=>{cancelled=true;};
+  },[]);
   const selectCabinet=id=>{const group=config.groups.find(g=>g.includes(id));setSelected(group||[id]);setInspected(null);};
   const save=async()=>{setSaving(true);try {await axios.put(`${API}/projects/${projectId}`,{id:projectId,name:'The Atelier Kitchen',configuration:config,brand});setSaved(true);toast.success('Design saved');}catch {toast.error('Could not save. Your local design is still available.');}finally{setSaving(false);}};
   const reset=()=>{setHistory(h=>[...h.slice(-49),config]);setFuture([]);setConfig({...DEFAULT_CONFIG});setSelected(['B01']);setExplode(0);setInspected(null);setSaved(false);toast.success('Kitchen reset to the original concept');};
@@ -67,6 +78,6 @@ export function StudioProvider({children}) {
   const resetArrangement=()=>update({custom:false,placements:[]});
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resetArrangement,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resetArrangement,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);

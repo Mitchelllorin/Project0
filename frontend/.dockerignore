@@ -1,0 +1,9 @@
+# .env would win over the build arguments below and bake localhost into a client's
+# bundle — the one mistake that is invisible until it is in production.
+.env
+.env.*
+node_modules/
+build/
+.git/
+coverage/
+*.log

@@ -142,6 +142,13 @@ class Brand(BaseModel):
         return value
 
 
+class Deployment(BaseModel):
+    """What a client's instance is configured as, served to the studio at boot so a
+    deployment can be re-branded without rebuilding the frontend (see DEPLOY.md)."""
+    brand: Brand = Field(default_factory=Brand)
+    catalog: str = 'euro32'
+
+
 class Project(BaseModel):
     id: str
     name: str = Field('The Atelier Kitchen', max_length=100)

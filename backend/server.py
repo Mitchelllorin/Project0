@@ -5,11 +5,16 @@ from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime, timezone
 from uuid import UUID
+import logging
 import os
-from models import Configuration, SceneResponse, GroupRequest, Project, CatalogItem, ProductAssembly
+from models import Configuration, SceneResponse, GroupRequest, Project, CatalogItem, ProductAssembly, Deployment
 from layout import build_layout, dimensions, make_quote, adjacent
 from assembly import make_parts
 from recipe import load_catalog, validate_catalog, available_catalogs
+from deployment import deployment
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s: %(message)s')
+logger = logging.getLogger('kitchen-studio')
 
 load_dotenv(Path(__file__).parent / '.env')
 client=AsyncIOMotorClient(os.environ['MONGO_URL'])
@@ -29,12 +34,18 @@ async def root(): return {'name':'Kitchen Studio Assembly API','version':'1.0.0'
 def resolve_catalog(name):
     try:
         catalog=load_catalog(name)
-    except OSError:
+    except (OSError, ValueError, KeyError, TypeError):
+        # Not installed, unreadable or structurally broken — a bad catalog document,
+        # which is a 400 for the caller, never a 500.
         raise HTTPException(400,f'Unknown catalog {name!r}')
     errors=validate_catalog(catalog.data)
     if errors:
         raise HTTPException(400,f'Catalog {name!r} is not renderable: '+'; '.join(errors[:5]))
     return catalog
+
+@api.get('/deployment', response_model=Deployment)
+async def deployment_config():
+    return deployment()
 
 @api.get('/catalogs')
 async def catalogs():
