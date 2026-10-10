@@ -39,7 +39,7 @@
 
 .document-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.ghost-button{background:transparent!important;color:#b6c19f!important;border-color:#4a553a!important;font-size:11px!important;height:33px!important;font-weight:400!important}.ghost-button:hover{background:#323c26!important;color:#e1e6d4!important}
 
-.arrange-bar{position:absolute;z-index:6;bottom:95px;left:18px;width:335px;max-width:calc(100% - 36px);background:#1e231fee;border:1px solid var(--studio-accent);border-radius:7px;padding:14px 15px 12px;box-shadow:0 6px 20px #10180922;color:#b0bd99}
+.layout-widget{position:absolute;z-index:6;bottom:95px;left:18px;width:302px;max-width:calc(100% - 36px);background:#1e231fee;border:1px solid var(--studio-accent);border-radius:7px;padding:13px 14px 11px;box-shadow:0 6px 20px #10180922;color:#b0bd99}
 .arrange-title{display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:10px}
 .arrange-title>span{display:flex;align-items:center;gap:8px}
 .arrange-title strong{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:400;color:var(--studio-accent)}
@@ -52,6 +52,23 @@
 .arrange-segment{display:flex;gap:2px;padding:2px;background:#131613;border:1px solid #343a31;border-radius:5px}
 .arrange-hint{font-size:8px;color:var(--c70,#7f8e6c);font-family:'JetBrains Mono',monospace}
 .arrange-width{display:flex;align-items:center;gap:8px;font-size:9px}.arrange-width>span{color:#7f8e6c;font-family:'JetBrains Mono',monospace;font-size:8px}.arrange-width .select-wrap select{height:28px;font-size:10px;padding:0 26px 0 9px;min-width:150px}
+/* Layout widget: the card that drives the transform gizmo. Everything the free
+   layout can do — pick a cabinet, move it, rotate it, size it, merge it into a
+   run, add or remove carcasses, reset — lives here so the studio never needs a
+   trip to a side panel mid-edit. */
+.layout-title-actions{display:flex;align-items:center;gap:9px}
+.layout-dismiss{display:grid;place-items:center;width:24px;height:24px;border-radius:5px;background:transparent;border:0;color:#b0bd99;opacity:.7}
+.layout-dismiss:hover,.layout-dismiss:focus-visible{opacity:1;background:var(--c115,#323c26)}
+.layout-select{display:flex;align-items:center;gap:8px;font-size:9px;width:100%;min-width:0}
+.layout-select>span{color:#7f8e6c;font-family:'JetBrains Mono',monospace;font-size:8px;flex-shrink:0}
+.layout-select .select-wrap{flex:1;min-width:0}
+.layout-select .select-wrap select{height:28px;font-size:10px;padding:0 26px 0 9px}
+.layout-select .select-wrap svg{top:8px}
+.layout-readout{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;padding:9px 10px;background:#131613;border:1px solid #343a31;border-radius:5px}
+.layout-readout>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.layout-readout span{font-family:'JetBrains Mono',monospace;font-size:7px;color:#7f8e6c;text-transform:uppercase}
+.layout-readout strong{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;color:var(--c92,#e5d3a3);overflow-wrap:anywhere}
+@media(pointer:coarse){.layout-dismiss{width:34px;height:34px}}
 
 /* ==========================================================================
    Mobile / touch optimisation layer.
@@ -110,7 +127,7 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
   .mobile-panel-buttons{bottom:calc(58px + env(safe-area-inset-bottom,0px))}
   .explode-controls{bottom:calc(56px + env(safe-area-inset-bottom,0px));padding:9px 10px 8px}
   .explode-title{margin-bottom:8px}
-  .arrange-bar{max-height:58%;overflow-y:auto;overscroll-behavior:contain}
+  .layout-widget{max-height:58%;overflow-y:auto;overscroll-behavior:contain}
 }
 /* Narrow AND short: a phone in landscape or a small tablet split-screen. Only
    here do we drop decorative copy, because every pixel goes to the 3D scene. */
