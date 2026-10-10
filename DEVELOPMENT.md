@@ -75,6 +75,7 @@ changing `frontend/.env`.
 ```bash
 ./dev.sh          # Mongo (via Docker) + backend + frontend, Ctrl-C stops all three
 ./dev.sh check    # report this machine's toolchain, .env files, ports and installs
+./dev.sh install  # create the .env files and install both dependency sets, start nothing
 ```
 
 `dev.sh` is bash — on Windows use WSL2, or copy the commands above into two PowerShell
@@ -149,10 +150,17 @@ DEPLOY.md · DEVELOPMENT.md · README.md
 | `Unknown catalog 'x'` (400) | The name must be a JSON file in `backend/catalog/`; `curl localhost:8001/api/catalogs` lists them and says why any is invalid. |
 | A catalogue edit has no effect | Catalogues are cached in the process — restart the API. |
 | `yarn: command not found` | `corepack enable`, or `npm install -g yarn@1.22.22`. |
-| Install fails fetching `@emergentbase/*` from `assets.emergent.sh` | Those two devDependencies are editor-tooling from the cloud environment, used only by the dev-server overlay, and the config already tolerates their absence. If that host is unreachable for you, delete both from `frontend/package.json` and install again. |
+| Install fails fetching `@emergentbase/*` from `assets.emergent.sh` | Those two are dev-server editor tooling (a branded error overlay and a visual-edit bridge) fetched from a vendor CDN, and nothing in a production build uses them. `./dev.sh install` retries without them automatically and puts `package.json` and `yarn.lock` back afterwards. By hand: drop both from `frontend/package.json`, install, then restore the file — the studio builds and runs without them, printing two warnings, with the overlay off. Note that declaring them `optionalDependencies`, or installing with `--ignore-optional`, does **not** help: yarn v1 still exits non-zero when a URL dependency is unreachable (both measured). |
 | The build or dev server is killed (exit 137) | Out of RAM. The separate TypeScript checker worker is the expensive part: `DISABLE_TS_CHECKER=true yarn build` (or `yarn start`), and cap the heap with `NODE_OPTIONS=--max-old-space-size=1024`. Types are still checked with `npx tsc --noEmit`. |
 | Port already in use | `lsof -i :3000` / `:8001` / `:27017`, or start on another port and update `.env`. |
 | Mongo connection refused | `docker compose up -d mongo`, or start your own `mongod`. |
+
+## Continuous integration
+
+`.github/workflows/verify.yml` runs this same path on every push and pull request —
+`./dev.sh install`, the API contract tests against a real MongoDB service container,
+`tsc`, the unit tests and a production build. It is deliberately one job using the
+developer's own script, so a green tick means the documented path works.
 
 ## Notes
 

@@ -1,0 +1,66 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+# One job that runs exactly what a developer runs locally (./dev.sh, then the documented
+# checks), so a green tick means the documented path works rather than a parallel
+# universe of hand-written commands.
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 6
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: ./dev.sh install
+
+      - name: API contract tests (live backend, as documented)
+        working-directory: backend
+        env:
+          REACT_APP_BACKEND_URL: http://127.0.0.1:8001
+        run: |
+          ./.venv/bin/python -m uvicorn server:app --port 8001 &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8001/api/ >/dev/null && break
+            sleep 1
+          done
+          ./.venv/bin/python -m pytest -q
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        working-directory: frontend
+        run: CI=true corepack yarn test --watchAll=false
+
+      - name: Production build
+        working-directory: frontend
+        env:
+          REACT_APP_BACKEND_URL: ''
+          GENERATE_SOURCEMAP: 'false'
+        run: corepack yarn build

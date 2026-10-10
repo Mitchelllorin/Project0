@@ -7,7 +7,18 @@ WORKDIR /app
 
 # Dependency layer first: it only rebuilds when the lockfile changes.
 COPY package.json yarn.lock ./
-RUN corepack enable && yarn install --frozen-lockfile --network-timeout 600000
+
+# @emergentbase/overlay and @emergentbase/visual-edits are dev-server editor tooling
+# (a branded error overlay and a visual-edit bridge) fetched from a vendor CDN. A
+# production build never uses them, and because they are URL dependencies yarn cannot
+# fail softly on them — declared optional, or installed with --ignore-optional, it still
+# exits non-zero when the CDN is unreachable (both measured). So they are dropped here
+# instead of relied upon; craco.config.js already degrades gracefully without them.
+# The install is therefore not --frozen-lockfile: the lockfile still pins every remaining
+# dependency exactly, but package.json no longer matches it.
+RUN corepack enable \
+ && node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));for (const name of ['@emergentbase/overlay','@emergentbase/visual-edits']) delete p.devDependencies[name];fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');" \
+ && yarn install --network-timeout 600000
 
 COPY . .
 

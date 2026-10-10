@@ -96,6 +96,9 @@ credentials.json
 .credentials
 frontend/node_modules/.cache/default-development/10.pack
 
+# Cloud authoring-environment metadata (env image, job id) — not part of the product.
+.emergent/
+
 # Keep the committed example env templates (they match the ".env.*" rule above).
 !.env.example
 !.env.prod.example

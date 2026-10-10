@@ -3,6 +3,7 @@
 #
 #   ./dev.sh          start everything; Ctrl-C stops the two servers
 #   ./dev.sh check    report what this machine has and what is missing — changes nothing
+#   ./dev.sh install  install both dependency sets, start nothing
 #
 # DEVELOPMENT.md has the manual version of every step, plus Windows notes.
 set -euo pipefail
@@ -17,15 +18,25 @@ have() { command -v "$1" >/dev/null 2>&1; }
 first_line() { "$1" --version 2>/dev/null | head -1; }
 port_busy() { { ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null || true; } | grep -qE "[:.]$1[[:space:]]"; }
 
+# Yarn 1.22 is declared in packageManager. Prefer a real yarn; otherwise run that same
+# version through corepack, which needs no shims on PATH — 'corepack enable' writes into
+# the Node installation and fails on a locked-down machine (it does here).
+YARN=""
+resolve_yarn() {
+  if have yarn; then YARN=yarn
+  elif have corepack; then YARN="corepack yarn"
+  else YARN=""; fi
+  [ -n "$YARN" ]
+}
+
 check() {
   local missing=0
 
   echo "== toolchain =="
   if have node; then echo "node      $(first_line node)   (needs 20+)"
   else echo "node      MISSING — install Node 20 or newer"; missing=1; fi
-  if have yarn; then echo "yarn      $(first_line yarn)"
-  elif have corepack; then echo "yarn      via corepack — run 'corepack enable'"
-  else echo "yarn      MISSING — 'corepack enable', or 'npm install -g yarn@1.22.22'"; missing=1; fi
+  if resolve_yarn; then echo "yarn      $($YARN --version 2>/dev/null) (via $YARN)"
+  else echo "yarn      MISSING — install Node 20+, which ships corepack"; missing=1; fi
   if have python3; then echo "python3   $(first_line python3)   (needs 3.11–3.12)"
   else echo "python3   MISSING — install Python 3.11 or 3.12"; missing=1; fi
   if have docker; then
@@ -60,6 +71,43 @@ check() {
   return "$missing"
 }
 
+# Install frontend dependencies. If the install fails for the one reason that is not
+# your fault — the two @emergentbase/* dev-server packages are URL dependencies on a
+# vendor CDN, and yarn v1 refuses to fail softly on them (declaring them optional, or
+# --ignore-optional, still exits non-zero) — retry once without them. They are editor
+# tooling: the studio builds and runs without them, with two warnings.
+install_frontend() {
+  if [ -d node_modules ]; then return 0; fi
+  if ! resolve_yarn; then
+    echo "!! neither yarn nor corepack is available — install Node 20 or newer" >&2
+    return 1
+  fi
+  if $YARN install --frozen-lockfile; then return 0; fi
+
+  echo
+  echo "!! yarn install failed — retrying without the cloud-only editor tooling"
+  echo "   (@emergentbase/overlay, @emergentbase/visual-edits: see DEVELOPMENT.md)"
+
+  local keep status=0
+  keep=$(mktemp -d)
+  cp package.json yarn.lock "$keep/"
+  if node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));for (const n of ['@emergentbase/overlay','@emergentbase/visual-edits']) delete p.devDependencies[n];fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');"; then
+    $YARN install || status=1
+  else
+    status=1
+  fi
+  # Put the manifest back exactly as it was, whether or not the retry worked.
+  cp "$keep/package.json" "$keep/yarn.lock" .
+  rm -rf "$keep"
+
+  if [ "$status" = 0 ]; then
+    echo "==> installed without the editor tooling; package.json and yarn.lock are untouched"
+  else
+    echo "!! the install failed for another reason — see the error above" >&2
+  fi
+  return "$status"
+}
+
 start() {
   if have docker && docker info >/dev/null 2>&1; then
     echo "==> MongoDB (docker compose)"
@@ -83,9 +131,8 @@ start() {
   (
     cd frontend
     [ -f .env ] || cp .env.example .env
-    have yarn || corepack enable >/dev/null 2>&1 || true
-    [ -d node_modules ] || yarn install --frozen-lockfile
-    BROWSER=none exec yarn start
+    install_frontend
+    BROWSER=none exec $YARN start
   ) &
   FRONTEND_PID=$!
 
@@ -96,5 +143,10 @@ start() {
 case "${1:-start}" in
   start) start ;;
   check) check ;;
+  install)
+    ( cd backend && [ -f .env ] || cp .env.example .env; [ -d .venv ] || python3 -m venv .venv; ./.venv/bin/pip install -q -r requirements-dev.txt )
+    ( cd frontend && [ -f .env ] || cp .env.example .env; install_frontend )
+    echo "==> dependencies installed; './dev.sh' to start"
+    ;;
   *) usage; exit 1 ;;
 esac

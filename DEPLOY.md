@@ -27,7 +27,10 @@ preflight, and no backend hostname baked into the bundle.
 
 **Requirements:** Docker Engine 24+ with the Compose v2 plugin, 2 vCPU, 2 GB RAM, 10 GB
 disk. Node, Yarn, Python and MongoDB are **not** needed on the client's machine — the
-build happens inside the image.
+build happens inside the image, and it pulls nothing but the public npm and Docker
+registries: the two `@emergentbase/*` editor packages that `frontend/package.json`
+declares for the dev server are dropped during the image build, because they are fetched
+from a vendor CDN and a production build never uses them.
 
 ## 2. Quick start
 
