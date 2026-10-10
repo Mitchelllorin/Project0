@@ -73,84 +73,44 @@ tests (`src/studio/device.test.ts`, `src/studio/pointer.test.ts`).
 
 ## Local development
 
-### Prerequisites
-
-| Tool | Version | Notes |
-|---|---|---|
-| Node.js | >= 20 | `frontend/package.json` targets Node 20+ |
-| Yarn | 1.22 | Declared as `packageManager`; enable with `corepack enable` |
-| Python | 3.11–3.12 | |
-| MongoDB | 6 or 7 | Either Docker (recommended) or a local `mongod` |
-
-### 1. Start MongoDB
-
-With Docker:
+**`DEVELOPMENT.md`** is the full setup guide: prerequisites, MongoDB, both servers, the
+verification commands and a troubleshooting table. The short version:
 
 ```bash
-docker compose up -d mongo
+./dev.sh          # MongoDB + backend (8001) + frontend (3000)
+./dev.sh check    # what this machine has, and what is missing — changes nothing
 ```
 
-Without Docker, run a local server instead (any install works):
+| Tool | Version |
+|---|---|
+| Node.js | >= 20 (declared in `frontend/package.json`) |
+| Yarn | 1.22 (`corepack enable`) |
+| Python | 3.11–3.12 |
+| MongoDB | 6 or 7 — Docker (recommended), a local server, or any reachable `mongodb://` URL |
+
+`backend/.env` is required: `server.py` reads `MONGO_URL`, `DB_NAME` and `CORS_ORIGINS` at
+import time and will not start without them. `frontend/.env` holds
+`REACT_APP_BACKEND_URL`, which CRA bakes in at **start** time — restart the dev server
+after changing it. Both are copied from the committed `.env.example` templates.
+
+### Tests
 
 ```bash
-mongod --dbpath ./data/db --port 27017
+cd backend  && REACT_APP_BACKEND_URL=http://localhost:8001 pytest -q   # 55 — drives a LIVE backend
+cd frontend && CI=true yarn test --watchAll=false                      # 48 — no backend needed
+cd frontend && npx tsc --noEmit                                        # clean
 ```
 
-### 2. Backend (port 8001)
-
-```bash
-cd backend
-cp .env.example .env            # adjust if your Mongo lives elsewhere
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-python -m uvicorn server:app --reload --port 8001
-```
-
-`.env` is required — `server.py` reads `MONGO_URL`, `DB_NAME` and
-`CORS_ORIGINS` at import time and will not start without them.
-
-### 3. Frontend (port 3000)
-
-In a second terminal:
-
-```bash
-cd frontend
-cp .env.example .env            # REACT_APP_BACKEND_URL=http://localhost:8001
-corepack yarn install           # (or: npm install)
-corepack yarn start
-```
-
-Open <http://localhost:3000>.
-
-CRA bakes `REACT_APP_BACKEND_URL` in at start time, so restart the dev server
-after changing `frontend/.env`.
-
-### Convenience script
-
-`./dev.sh` does the Mongo + backend + frontend startup above in one step
-(see the script for the exact commands it runs).
-
-## Tests
-
-Backend API tests run against a **live** backend and read its URL from
-`REACT_APP_BACKEND_URL`:
-
-```bash
-cd backend
-REACT_APP_BACKEND_URL=http://localhost:8001 pytest
-```
-
-Runtime + test dependencies are split so a plain
-`pip install -r requirements.txt` no longer fails: the original generated list
-included packages that are not imported by the app (and
-`emergentintegrations==0.2.2`, which is not published on PyPI).
+Runtime and test dependencies are split so a plain `pip install -r requirements.txt`
+works on a normal machine: the original generated list included packages the app never
+imports, plus `emergentintegrations==0.2.2`, which is not published on PyPI. Use
+`requirements-dev.txt` to run the tests.
 
 ### Remote / preview dev server
 
-When the dev server runs somewhere other than your machine (a cloud VM, a
-preview host), the browser can't reach the backend on its own `localhost`.
-Two optional env flags on `yarn start` handle that:
+When the dev server runs somewhere other than your machine (a cloud VM, a preview host),
+the browser can't reach the backend on its own `localhost`. Two optional env flags on
+`yarn start` handle that:
 
 ```bash
 REACT_APP_BACKEND_URL= DEV_PROXY_TARGET=http://127.0.0.1:8001 DISABLE_TS_CHECKER=true yarn start
@@ -158,8 +118,8 @@ REACT_APP_BACKEND_URL= DEV_PROXY_TARGET=http://127.0.0.1:8001 DISABLE_TS_CHECKER
 
 - `DEV_PROXY_TARGET` — proxies same-origin `/api/*` from the dev server to the
   backend, so set `REACT_APP_BACKEND_URL=` (empty) and the app calls `/api`.
-- `DISABLE_TS_CHECKER` — skips the separate TypeScript type-checker worker
-  processes, which cut peak memory roughly in half (useful on low-RAM VMs).
+- `DISABLE_TS_CHECKER` — skips the separate TypeScript type-checker worker processes, which
+  cut peak memory roughly in half (useful on low-RAM VMs).
 
 Both are opt-in and have no effect on a normal local `yarn start`.
 
@@ -171,13 +131,6 @@ Both are opt-in and have no effect on a normal local `yarn start`.
 | Backend API | 8001 |
 | MongoDB | 27017 |
 
-## Known local-dev gotchas
-
-- **`No matching distribution found for emergentintegrations`** — fixed here by
-  trimming `backend/requirements.txt` to the dependencies the backend actually
-  imports. Use `requirements-dev.txt` for tests.
-- **Studio says "The studio could not connect"** — the backend isn't reachable.
-  Check `frontend/.env` has `REACT_APP_BACKEND_URL=http://localhost:8001`, the
-  backend is on 8001, and its `CORS_ORIGINS` includes your frontend origin.
-- **Backend exits immediately** — `backend/.env` is missing. Copy
-  `backend/.env.example`.
+Common failures and their fixes are in the troubleshooting table in
+[`DEVELOPMENT.md`](DEVELOPMENT.md) — a missing `backend/.env`, an unreachable API, a
+killed build, and the rest.
