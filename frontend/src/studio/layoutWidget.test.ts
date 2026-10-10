@@ -1,6 +1,6 @@
 import {
   GIZMO_MODES, ROTATION_SNAP_RAD, TRANSLATION_SNAP_M, WIDTH_OPTIONS,
-  groupFor, nextGizmoMode, placementReadout, rotationDegrees, runLength, snapLabel,
+  groupFor, placementReadout, rotationDegrees, snapLabel,
 } from './layoutWidget';
 
 describe('layout widget rules', () => {
@@ -13,12 +13,6 @@ describe('layout widget rules', () => {
   it('offers both gizmo modes, named the way a designer reads them', () => {
     expect(GIZMO_MODES.map(mode => mode.id)).toEqual(['translate', 'rotate']);
     expect(GIZMO_MODES.every(mode => mode.hint.length > 0)).toBe(true);
-  });
-
-  it('flips between the two gizmo modes', () => {
-    expect(nextGizmoMode('translate')).toBe('rotate');
-    expect(nextGizmoMode('rotate')).toBe('translate');
-    expect(nextGizmoMode('nonsense')).toBe('rotate');
   });
 
   it('finds the merged run a cabinet belongs to', () => {
@@ -47,12 +41,6 @@ describe('layout widget rules', () => {
     expect(WIDTH_OPTIONS).toHaveLength(11);
     expect(WIDTH_OPTIONS[0]).toEqual({mm: 457.2, label: '18 in / 457 mm'});
     expect(WIDTH_OPTIONS[10]).toEqual({mm: 1219.2, label: '48 in / 1219 mm'});
-  });
-
-  it('adds up a merged run', () => {
-    expect(runLength([{width: 762}, {width: 914.4}])).toBeCloseTo(1676.4, 3);
-    expect(runLength([])).toBe(0);
-    expect(runLength(undefined)).toBe(0);
   });
 
   it('reads out the position and rotation of the cabinet the gizmo is moving', () => {

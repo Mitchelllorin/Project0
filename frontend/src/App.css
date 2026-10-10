@@ -39,7 +39,7 @@
 
 .document-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.ghost-button{background:transparent!important;color:#b6c19f!important;border-color:#4a553a!important;font-size:11px!important;height:33px!important;font-weight:400!important}.ghost-button:hover{background:#323c26!important;color:#e1e6d4!important}
 
-.layout-widget{position:absolute;z-index:6;bottom:95px;left:18px;width:302px;max-width:calc(100% - 36px);background:#1e231fee;border:1px solid var(--studio-accent);border-radius:7px;padding:13px 14px 11px;box-shadow:0 6px 20px #10180922;color:#b0bd99}
+.layout-widget{position:absolute;z-index:6;bottom:95px;left:18px;width:auto;max-width:calc(100% - 36px);background:#1e231fee;border:1px solid var(--studio-accent);border-radius:7px;padding:8px 9px;box-shadow:0 6px 20px #10180922;color:#b0bd99}
 .arrange-title{display:flex;align-items:center;justify-content:space-between;font-size:11px;margin-bottom:10px}
 .arrange-title>span{display:flex;align-items:center;gap:8px}
 .arrange-title strong{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:400;color:var(--studio-accent)}
@@ -56,9 +56,11 @@
    layout can do — pick a cabinet, move it, rotate it, size it, merge it into a
    run, add or remove carcasses, reset — lives here so the studio never needs a
    trip to a side panel mid-edit. */
-.layout-title-actions{display:flex;align-items:center;gap:9px}
-.layout-dismiss{display:grid;place-items:center;width:24px;height:24px;border-radius:5px;background:transparent;border:0;color:#b0bd99;opacity:.7}
-.layout-dismiss:hover,.layout-dismiss:focus-visible{opacity:1;background:var(--c115,#323c26)}
+/* One row while arranging, so the model stays visible; everything heavier is
+   behind the 'More' disclosure instead of being permanently in the way. */
+.layout-bar{margin-top:0}
+.layout-extra{display:flex;flex-direction:column;gap:9px;padding-bottom:10px;margin-bottom:9px;border-bottom:1px solid #343a31}
+.layout-extra .arrange-row{margin-top:0}
 .layout-select{display:flex;align-items:center;gap:8px;font-size:9px;width:100%;min-width:0}
 .layout-select>span{color:#7f8e6c;font-family:'JetBrains Mono',monospace;font-size:8px;flex-shrink:0}
 .layout-select .select-wrap{flex:1;min-width:0}
@@ -68,7 +70,6 @@
 .layout-readout>div{display:flex;flex-direction:column;gap:5px;min-width:0}
 .layout-readout span{font-family:'JetBrains Mono',monospace;font-size:7px;color:#7f8e6c;text-transform:uppercase}
 .layout-readout strong{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:400;color:var(--c92,#e5d3a3);overflow-wrap:anywhere}
-@media(pointer:coarse){.layout-dismiss{width:34px;height:34px}}
 
 /* ==========================================================================
    Mobile / touch optimisation layer.

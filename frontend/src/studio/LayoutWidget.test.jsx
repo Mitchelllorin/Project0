@@ -1,6 +1,7 @@
-// The widget is the whole free-layout workflow, so the test drives the things
-// that make it self-sufficient rather than asserting the markup: merging a run
-// from inside the widget, unmerging it again, and switching what the gizmo does.
+// Two things matter here and they are both about not getting in the way: the
+// widget must not cover the model while you arrange it, and the layout workflow
+// must still be complete. So the first test asserts what is deliberately NOT on
+// screen, the second that one click brings all of it back.
 import React, {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {LayoutWidget} from './LayoutWidget';
@@ -53,16 +54,36 @@ function render() {
 }
 
 const byTestId = (c, id) => c.querySelector(`[data-testid="${id}"]`);
+const openMore = c => act(() => byTestId(c, 'layout-more').click());
 
 describe('LayoutWidget', () => {
-  it('names the cabinet the gizmo drives, where it sits and how far it is turned', () => {
+  it('is one row of controls at rest, so it does not cover the model', () => {
     const c = render();
-    expect(byTestId(c, 'layout-widget')).not.toBeNull();
+    expect(byTestId(c, 'layout-bar')).not.toBeNull();
+    // Nothing heavy is in the DOM until it is asked for.
+    ['layout-extra', 'layout-cabinet-select', 'layout-placement-readout', 'cabinet-width',
+      'add-base', 'add-drawers', 'add-corner', 'add-corner-out',
+      'remove-cabinet', 'reset-arrangement'].forEach(id => expect(byTestId(c, id)).toBeNull());
+    // ...while the controls you actually reach for are on the row.
+    ['gizmo-translate', 'gizmo-rotate', 'layout-merge', 'layout-more', 'done-arranging']
+      .forEach(id => expect(byTestId(c, id)).not.toBeNull());
+  });
+
+  it('keeps the whole layout workflow one click away, and folds it back up', () => {
+    const c = render();
+    openMore(c);
+    expect(byTestId(c, 'layout-more').getAttribute('aria-expanded')).toBe('true');
     expect(byTestId(c, 'layout-cabinet-select')).not.toBeNull();
     expect(byTestId(c, 'layout-position').textContent).toBe('0 mm · 305 mm');
     expect(byTestId(c, 'layout-rotation').textContent).toBe('0°');
-    expect(byTestId(c, 'layout-placement-readout').textContent).toContain('Position X · Z');
-    expect(byTestId(c, 'layout-widget').textContent).toContain('Snaps to 25.4 mm / 15°');
+    expect(byTestId(c, 'layout-group-readout').textContent).toContain('25.4 mm / 15°');
+    expect(byTestId(c, 'cabinet-width').querySelectorAll('option')).toHaveLength(11);
+    ['add-base', 'add-drawers', 'add-corner', 'add-corner-out', 'remove-cabinet', 'reset-arrangement']
+      .forEach(id => expect(byTestId(c, id)).not.toBeNull());
+
+    openMore(c);
+    expect(byTestId(c, 'layout-extra')).toBeNull();
+    expect(byTestId(c, 'layout-more').getAttribute('aria-expanded')).toBe('false');
   });
 
   it('switches what the gizmo does between moving and rotating', () => {
@@ -72,14 +93,7 @@ describe('LayoutWidget', () => {
     expect(mockStudio.setGizmoMode).toHaveBeenCalledWith('rotate');
   });
 
-  it('offers every stock carcass width to the selected cabinet', () => {
-    const c = render();
-    expect(byTestId(c, 'cabinet-width').querySelectorAll('option')).toHaveLength(11);
-    expect(byTestId(c, 'add-corner-out')).not.toBeNull();
-    expect(byTestId(c, 'remove-cabinet')).not.toBeNull();
-  });
-
-  it('merges a run from inside the widget', () => {
+  it('merges a run from the row itself', () => {
     const c = render();
     expect(byTestId(c, 'layout-unmerge')).toBeNull();
     act(() => byTestId(c, 'layout-merge').click());
@@ -90,16 +104,16 @@ describe('LayoutWidget', () => {
     mockStudio = studioWith({config: {units: 'mm', custom: true, groups: [['B01', 'B02']], finish: 'oak'}});
     const c = render();
     expect(byTestId(c, 'layout-merge')).toBeNull();
-    expect(byTestId(c, 'layout-group-readout').textContent).toBe('B01 + B02');
     act(() => byTestId(c, 'layout-unmerge').click());
     expect(mockStudio.update).toHaveBeenCalledWith({groups: []});
+
+    openMore(c);
+    expect(byTestId(c, 'layout-group-readout').textContent).toContain('B01 + B02');
   });
 
-  it('closes from both the dismiss control and Done', () => {
+  it('finishes from Done', () => {
     const c = render();
-    act(() => byTestId(c, 'layout-dismiss').click());
-    expect(mockStudio.setArrange).toHaveBeenCalledWith(false);
     act(() => byTestId(c, 'done-arranging').click());
-    expect(mockStudio.setArrange).toHaveBeenCalledTimes(2);
+    expect(mockStudio.setArrange).toHaveBeenCalledWith(false);
   });
 });

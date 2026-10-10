@@ -19,10 +19,6 @@ export const WIDTH_OPTIONS = Array.from({length: 11}, (_, i) => ({
   label: `${(i + 6) * 3} in / ${Math.round((i + 6) * 76.2)} mm`,
 }));
 
-export function nextGizmoMode(mode: string): string {
-  return mode === 'rotate' ? 'translate' : 'rotate';
-}
-
 // A merged run is stored as a list of cabinet ids; the widget needs the group a
 // selection belongs to so it can offer "unmerge" instead of "merge".
 export function groupFor(groups: string[][] | undefined, id: string | undefined): string[] | null {
@@ -37,10 +33,6 @@ export function rotationDegrees(radians: number | undefined): number {
 
 export function snapLabel(units: string | undefined): string {
   return `${units === 'in' ? '1 in' : '25.4 mm'} / 15°`;
-}
-
-export function runLength(cabinets: Array<{width?: number}> | undefined): number {
-  return (cabinets || []).reduce((total, cabinet) => total + (cabinet.width || 0), 0);
 }
 
 // The widget names the cabinet the gizmo is driving, plus where it sits and how
