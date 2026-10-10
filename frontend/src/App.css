@@ -161,3 +161,26 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
   .explode-collapse{width:34px;height:34px}
   .explode-expand{padding:13px 18px;min-height:44px}
 }
+
+/* Explode panel: centred in the viewport so it reads as the assembly's own
+   controls rather than a corner badge, resting almost transparent so the
+   exploded model stays legible underneath, and fully opaque the moment the
+   viewer reaches for it.
+   The card's own background is opaque, so the model never shows *through* the
+   panel; only the resting state fades the whole element.
+   Hover-less pointers get the opaque state outright — a fade that only a mouse
+   can clear would leave touch users with unreadable controls. */
+.explode-controls{top:50%;left:50%;bottom:auto;transform:translate(-50%,-50%);max-height:calc(100% - 20px);overflow-y:auto;backdrop-filter:none;-webkit-backdrop-filter:none;transition:opacity .18s ease}
+.explode-controls:not(.is-collapsed){opacity:.38}
+.explode-controls:not(.is-collapsed):hover{opacity:1}
+.explode-controls:not(.is-collapsed):focus-within{opacity:1}
+@media(hover:none){.explode-controls:not(.is-collapsed){opacity:1}}
+.explode-dismiss{display:grid;place-items:center;width:24px;height:24px;border-radius:5px;background:transparent;border:0;color:var(--c152);opacity:.7}
+.explode-dismiss:hover,.explode-dismiss:focus-visible{opacity:1;background:var(--c150)}
+@media(pointer:coarse){.explode-dismiss{width:34px;height:34px}}
+/* The panel is no longer anchored to the bottom edge, so the mobile panel
+   switches go back to their normal position instead of being lifted clear of
+   it. Re-stated per breakpoint so the safe-area and short-viewport values stand. */
+@media(max-width:1000px){.viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:91px}}
+@media(max-width:700px){.viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:calc(92px + env(safe-area-inset-bottom,0px))}}
+@media(max-height:640px){.viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:calc(58px + env(safe-area-inset-bottom,0px))}}

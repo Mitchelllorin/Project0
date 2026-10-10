@@ -104,6 +104,15 @@ let webpackConfig = {
       },
     },
   },
+  jest: {
+    configure: {
+      // Jest has to resolve the same '@/' alias webpack does, or any test that
+      // touches src/components/ui/* cannot run at all.
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+      },
+    },
+  },
   webpack: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

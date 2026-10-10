@@ -1,9 +1,10 @@
-import React,{useEffect,useState} from 'react';
+import React,{useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Canvas} from '@react-three/fiber';
 import {OrbitControls} from '@react-three/drei';
-import {Box,Layers,MoveUpRight,Link2,Unlink,ChevronUp,ChevronDown,ChevronRight,ArrowUpRight,Search,Check,Component,Settings2,ArrowRight} from 'lucide-react';
+import {Box,Layers,MoveUpRight,Link2,Unlink,ChevronUp,ChevronRight,ArrowUpRight,Search,Check,Component,Settings2,ArrowRight,X} from 'lucide-react';
 import {Button} from '../components/ui/button';
+import {EXPLODE_PANEL_MINIMISED,EXPLODE_PANEL_OPEN,explodePanelState} from './explodePanel';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '../components/ui/dialog';
 import {toast} from 'sonner';
 import axios from 'axios';
@@ -64,15 +65,14 @@ export function Inspector({assembly=false}) {
   </aside>;
 }
 
-const EXPLODE_COLLAPSE_KEY='studio.explodeCollapsed';
-function readExplodeCollapsed(){try{return window.localStorage.getItem(EXPLODE_COLLAPSE_KEY)==='1';}catch(e){return false;}}
 export function ExplodeControls() {
   const {explode,setExplode}=useStudio();
-  // The panel floats over the model (and swallows orbit drags in its area), so it
-  // collapses to a pill the viewer can dismiss. Preference survives navigation.
-  const [collapsed,setCollapsed]=useState(readExplodeCollapsed);
-  useEffect(()=>{try{window.localStorage.setItem(EXPLODE_COLLAPSE_KEY,collapsed?'1':'0');}catch(e){/* storage unavailable */}},[collapsed]);
+  // The panel floats in the middle of the viewport over the model (and swallows
+  // orbit drags in its area), so it dismisses to a pill the viewer can bring
+  // back. Session-only on purpose: the next explode assembly gets it again.
+  const [state,setState]=useState(EXPLODE_PANEL_OPEN);
+  const moveTo=action=>setState(current=>explodePanelState(action,current));
   const percent=Math.round(explode*100);
-  if(collapsed)return <div className="explode-controls is-collapsed" data-testid="explode-controls"><button type="button" className="explode-expand" data-testid="explode-expand" aria-expanded="false" title="Show the explode controls" onClick={()=>setCollapsed(false)}><ChevronUp size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></button></div>;
-  return <div className="explode-controls" data-testid="explode-controls"><div className="explode-title"><span><Layers size={15}/> Exploded assembly</span><span className="explode-title-actions"><strong data-testid="explode-percentage">{percent}%</strong><button type="button" className="explode-collapse" data-testid="explode-collapse" aria-expanded="true" title="Hide the explode controls" aria-label="Hide the explode controls" onClick={()=>setCollapsed(true)}><ChevronDown size={15}/></button></span></div><input data-testid="explode-slider" aria-label="Explode assembly" type="range" min="0" max="100" value={Math.round(explode*100)} onChange={e=>setExplode(Number(e.target.value)/100)} style={{'--range-progress':`${explode*100}%`}}/><div className="explode-stages">{[['Assembled',0],['Panels',.34],['Hardware',.65],['Fasteners',1]].map(([label,v])=><button key={label} data-testid={`explode-stage-${label.toLowerCase()}`} className={Math.abs(explode-v)<.02?'active':''} onClick={()=>setExplode(v)}><span/>{label}</button>)}</div></div>;
+  if(state===EXPLODE_PANEL_MINIMISED)return <div className="explode-controls is-collapsed" data-testid="explode-controls"><button type="button" className="explode-expand" data-testid="explode-expand" aria-expanded="false" title="Show the explode controls" onClick={()=>moveTo('restore')}><ChevronUp size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></button></div>;
+  return <div className="explode-controls" data-testid="explode-controls"><div className="explode-title"><span><Layers size={15}/> Exploded assembly</span><span className="explode-title-actions"><strong data-testid="explode-percentage">{percent}%</strong><button type="button" className="explode-dismiss" data-testid="explode-dismiss" aria-expanded="true" title="Dismiss the explode controls" aria-label="Dismiss the explode controls" onClick={()=>moveTo('dismiss')}><X size={15}/></button></span></div><input data-testid="explode-slider" aria-label="Explode assembly" type="range" min="0" max="100" value={Math.round(explode*100)} onChange={e=>setExplode(Number(e.target.value)/100)} style={{'--range-progress':`${explode*100}%`}}/><div className="explode-stages">{[['Assembled',0],['Panels',.34],['Hardware',.65],['Fasteners',1]].map(([label,v])=><button key={label} data-testid={`explode-stage-${label.toLowerCase()}`} className={Math.abs(explode-v)<.02?'active':''} onClick={()=>setExplode(v)}><span/>{label}</button>)}</div></div>;
 }
