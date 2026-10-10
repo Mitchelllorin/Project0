@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import axios from 'axios';
 import { toast } from 'sonner';
 import { applyPalette, DEFAULT_PALETTE } from './palette';
+import { pickedAfterToggle } from './doors';
 import { encodeState, readShareHash } from './share';
 import { buildTimeDeployment, fetchDeployment, initialBrand, adoptServerBrand } from './deployment';
 
@@ -28,6 +29,10 @@ export function StudioProvider({children}) {
   const [scene,setScene]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saving,setSaving]=useState(false);
   const [selected,setSelected]=useState(['B01']),[explode,setExplode]=useState(0),[inspected,setInspected]=useState(null);
   const [doorsOpen,setDoorsOpen]=useState(false);
+  const toggleDoors=()=>{picked.current=pickedAfterToggle(doorsOpen,picked.current);setDoorsOpen(!doorsOpen);};
+  // Set the first time a cabinet is chosen. The initial selection is not a
+  // choice, so it must not swing any doors open on load.
+  const picked=useRef(false);
   const [arrange,setArrange]=useState(false),[gizmoMode,setGizmoMode]=useState('translate');
   const [camera,setCamera]=useState({view:'perspective',tick:0}),[mobilePanel,setMobilePanel]=useState(null),[presentation,setPresentation]=useState(false);
   const [tab,setTab]=useState('cabinets'),[saved,setSaved]=useState(false),[retry,setRetry]=useState(0);
@@ -66,7 +71,7 @@ export function StudioProvider({children}) {
     });
     return()=>{cancelled=true;};
   },[]);
-  const selectCabinet=id=>{const group=config.groups.find(g=>g.includes(id));setSelected(group||[id]);setInspected(null);};
+  const selectCabinet=id=>{picked.current=true;const group=config.groups.find(g=>g.includes(id));setSelected(group||[id]);setInspected(null);};
   const save=async()=>{setSaving(true);try {await axios.put(`${API}/projects/${projectId}`,{id:projectId,name:'The Atelier Kitchen',configuration:config,brand});setSaved(true);toast.success('Design saved');}catch {toast.error('Could not save. Your local design is still available.');}finally{setSaving(false);}};
   const reset=()=>{setHistory(h=>[...h.slice(-49),config]);setFuture([]);setConfig({...DEFAULT_CONFIG});setSelected(['B01']);setExplode(0);setInspected(null);setSaved(false);toast.success('Kitchen reset to the original concept');};
   // Free arrangement: placements are explicit cabinet transforms, edited with the gizmo.
@@ -78,6 +83,6 @@ export function StudioProvider({children}) {
   const resetArrangement=()=>update({custom:false,placements:[]});
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,setDoorsOpen,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resetArrangement,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,palette,setPalette,doorsOpen,toggleDoors,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resetArrangement,picked:picked.current,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);
