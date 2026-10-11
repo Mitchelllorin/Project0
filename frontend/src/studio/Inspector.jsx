@@ -64,11 +64,13 @@ export function ExplodeControls() {
   const {explode,setExplode}=useStudio();
   // The bar sits on the bottom edge — the middle of the screen is the product —
   // and it still dismisses to a pill the viewer can bring back, because it
-  // swallows orbit drags inside its own footprint. Session-only on purpose: the
+  // swallows orbit drags inside its own footprint. The pill keeps its own slider,
+  // so putting the panel away takes the panel and not the control: the explode
+  // amount stays editable without reopening it. Session-only on purpose: the
   // next explode assembly gets it again.
   const [state,setState]=useState(EXPLODE_PANEL_OPEN);
   const moveTo=action=>setState(current=>explodePanelState(action,current));
   const percent=Math.round(explode*100);
-  if(state===EXPLODE_PANEL_MINIMISED)return <div className="explode-controls is-collapsed" data-testid="explode-controls"><button type="button" className="explode-expand" data-testid="explode-expand" aria-expanded="false" title="Show the explode controls" onClick={()=>moveTo('restore')}><ChevronUp size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></button></div>;
+  if(state===EXPLODE_PANEL_MINIMISED)return <div className="explode-controls is-collapsed" data-testid="explode-controls"><button type="button" className="explode-expand" data-testid="explode-expand" aria-expanded="false" title="Show the explode controls" onClick={()=>moveTo('restore')}><ChevronUp size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></button><input className="explode-slider explode-slider-mini" data-testid="explode-slider-mini" aria-label="Explode assembly" type="range" min="0" max="100" value={Math.round(explode*100)} onChange={e=>setExplode(Number(e.target.value)/100)} style={{'--range-progress':`${explode*100}%`}}/></div>;
   return <div className="explode-controls" data-testid="explode-controls"><span className="explode-title" data-testid="explode-title"><Layers size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></span><input className="explode-slider" data-testid="explode-slider" aria-label="Explode assembly" type="range" min="0" max="100" value={Math.round(explode*100)} onChange={e=>setExplode(Number(e.target.value)/100)} style={{'--range-progress':`${explode*100}%`}}/><div className="explode-stages">{[['Assembled',0],['Panels',.34],['Hardware',.65],['Fasteners',1]].map(([label,v])=><button key={label} data-testid={`explode-stage-${label.toLowerCase()}`} className={Math.abs(explode-v)<.02?'active':''} onClick={()=>setExplode(v)}><span/>{label}</button>)}</div><PanelDismiss label="the explode controls" testId="explode-dismiss" className="explode-dismiss" onDismiss={()=>moveTo('dismiss')}/></div>;
 }

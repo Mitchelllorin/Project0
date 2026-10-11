@@ -6,8 +6,9 @@ import React, {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {ExplodeControls} from './Inspector';
 
+const mockSetExplode = jest.fn();
 jest.mock('./StudioContext', () => ({
-  useStudio: () => ({explode: 0.65, setExplode: jest.fn()}),
+  useStudio: () => ({explode: 0.65, setExplode: mockSetExplode}),
 }));
 // react-router-dom v7 resolves 'react-router/dom' through an exports map that
 // CRA's jest-resolve does not understand; the panel only needs useNavigate.
@@ -32,6 +33,18 @@ function render() {
 }
 
 const byTestId = (c, id) => c.querySelector(`[data-testid="${id}"]`);
+
+// React tracks a controlled input's value itself, so setting `.value` and firing
+// `input` is swallowed unless the native setter is used to make the change visible.
+function drag(node, value){
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  act(() => {
+    setter.call(node, value);
+    node.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+}
+
+beforeEach(() => mockSetExplode.mockClear());
 
 describe('ExplodeControls', () => {
   it('opens on the assembly with the dismiss control and the current stage', () => {
@@ -72,6 +85,27 @@ describe('ExplodeControls', () => {
     expect(dismiss.className).toContain('panel-dismiss');
     expect(dismiss.getAttribute('aria-label')).toBe('Hide the explode controls');
     expect(dismiss.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('keeps a working slider in the pill, so collapsing takes the panel and not the control', () => {
+    const c = render();
+    act(() => byTestId(c, 'explode-dismiss').click());
+    const mini = byTestId(c, 'explode-slider-mini');
+    expect(mini).not.toBeNull();
+    // In the pill itself, not a second copy left behind in the panel.
+    expect(mini.parentElement).toBe(byTestId(c, 'explode-controls'));
+    expect(mini.getAttribute('type')).toBe('range');
+    expect(mini.getAttribute('aria-label')).toBe('Explode assembly');
+
+    drag(mini, '34');
+    expect(mockSetExplode).toHaveBeenCalledWith(0.34);
+  });
+
+  it('leaves only one slider on screen at a time', () => {
+    const c = render();
+    expect(byTestId(c, 'explode-slider-mini')).toBeNull();
+    act(() => byTestId(c, 'explode-dismiss').click());
+    expect(byTestId(c, 'explode-slider')).toBeNull();
   });
 
   it('offers the named stages that drive the explode amount', () => {
