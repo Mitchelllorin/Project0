@@ -202,3 +202,23 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 @media(max-width:1000px){.viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:91px}}
 @media(max-width:700px){.viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:calc(92px + env(safe-area-inset-bottom,0px))}}
 @media(max-height:640px){.viewport-wrap:has(.explode-controls) .mobile-panel-buttons{bottom:calc(58px + env(safe-area-inset-bottom,0px))}}
+
+/* Dealer accounts: the sign-in badge replaces the old "demo workspace" label, and the
+   trade pricing block sits under the quote settings. Both are deliberately quiet — a
+   dealer's cost and margin are for the person signed in, not for the page. */
+.dealer-badge{display:flex;align-items:center;gap:7px;font-size:11px;white-space:nowrap;color:var(--c7);border:1px solid var(--c9);border-radius:5px;padding:8px 11px;max-width:230px;background:transparent}
+.dealer-badge:hover{background:var(--c12);color:var(--c13)}
+.dealer-badge>span{overflow:hidden;text-overflow:ellipsis}
+.dealer-badge.signed-in{color:var(--c13);border-color:var(--c19)}
+.dealer-badge.signed-in>svg{color:var(--studio-accent);flex-shrink:0}
+.dealer-badge small{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--studio-accent);border:1px solid var(--c19);border-radius:3px;padding:2px 5px;flex-shrink:0}
+.dealer-terms{font-size:11px;line-height:1.8;color:var(--c168);margin:16px 0 22px}
+.dealer-pricing{border-top:1px solid var(--c196);padding-top:20px;margin-top:25px}
+.dealer-pricing .table-heading{margin-bottom:12px}
+.dealer-pricing .price-breakdown{border-top:0;padding-top:0;margin-top:0}
+.dealer-pricing .field-label{margin:20px 0 0}
+.dealer-margin-note{display:block;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--c182);text-align:right;margin-top:9px}
+.dealer-note{font-size:9px;line-height:1.8;color:var(--c201);margin-top:15px}
+@media(max-width:1250px){.dealer-badge{max-width:165px}}
+@media(max-width:1000px){.dealer-badge small{display:none}}
+@media(max-width:700px){.dealer-badge{max-width:52px;padding:8px 10px}.dealer-badge>span{display:none}}

@@ -8,6 +8,7 @@ import {EXPLODE_PANEL_MINIMISED,EXPLODE_PANEL_OPEN,explodePanelState} from './ex
 import {toast} from 'sonner';
 import {useStudio} from './StudioContext';
 import {formatDimension,money} from './engine';
+import {clientTotal} from './dealer';
 import {PartGeometry} from './PartGeometry';
 import {SectionHeading,Select} from './Controls';
 import {MergeDialog} from './MergeDialog';
@@ -53,7 +54,7 @@ export function Inspector({assembly=false}) {
       <Button variant="outline" className="full-button" data-testid={group?'unmerge-cabinets-button':'merge-cabinets-button'} onClick={()=>group?unmerge():setMergeOpen(true)}>{group?<Unlink size={15}/>:<Link2 size={15}/>} {group?'Unmerge cabinets':'Merge cabinets'}</Button>
       <div className="standards-note" data-testid="cabinet-standard"><span><Check size={12}/> EURO / 32 MM SYSTEM</span><p>¾″ plywood carcass · ¼″ back<br/>4″ recessed toe kick</p>{cabinet?.kind==='corner'&&<p>45° diagonal face · true corner carcass</p>}</div>
     </>}</div>
-    {!assembly&&<div className="quote-peek"><span className="overline">ILLUSTRATIVE PROJECT ESTIMATE</span><div><strong data-testid="studio-quote-total">{config.quote.show_prices?money(scene.quote.total):`${scene.cabinets.length} cabinets`}</strong>{config.quote.show_prices&&<span>USD</span>}</div><button data-testid="view-bom-button" onClick={()=>navigate('/quote')}>View quote & bill of materials<ArrowRight size={14}/></button></div>}
+    {!assembly&&<div className="quote-peek"><span className="overline">ILLUSTRATIVE PROJECT ESTIMATE</span><div><strong data-testid="studio-quote-total">{config.quote.show_prices?money(clientTotal(scene.quote)):`${scene.cabinets.length} cabinets`}</strong>{config.quote.show_prices&&<span>USD</span>}</div><button data-testid="view-bom-button" onClick={()=>navigate('/quote')}>View quote & bill of materials<ArrowRight size={14}/></button></div>}
     {mergeOpen&&<MergeDialog open={mergeOpen} onOpenChange={setMergeOpen}/>}
   </aside>;
 }

@@ -47,8 +47,36 @@ cp .env.prod.example .env     # branding, public origin, shipped catalog
 Branding and the shipped catalogue are read twice, on purpose: baked into the bundle at
 build time so the first paint is already the client's brand, and served at
 `GET /api/deployment` at runtime so an instance can be re-branded without rebuilding.
-**`DEPLOY.md`** is the handoff guide — configuration, catalogue onboarding, backups, TLS
-and the post-deploy verification checklist.
+**`DEPLOY.md`** is the handoff guide — configuration, catalogue onboarding, dealer
+accounts, backups, TLS and the post-deploy verification checklist.
+
+## Dealer accounts and trade pricing
+
+One instance is one manufacturer. Its **dealers** are accounts inside that instance: an
+access code that resolves to a business, and a trade tier that decides what that business
+pays for the parts it orders.
+
+```bash
+curl -s -X POST localhost:8001/api/dealer/session \
+     -H 'Content-Type: application/json' -d '{"code":"<their code>"}'
+curl -s -X POST localhost:8001/api/configure \
+     -H 'Content-Type: application/json' -H 'X-Dealer-Code: <their code>' -d '{}'
+```
+
+The tier is resolved **on the server, from the code alone** — it is never sent in a request
+body, never stored in a design and never carried in a share link, so the same URL costs a
+dealer and a homeowner different amounts. A signed-in dealer sees their cost, their margin
+and a client price they can discount from list (`price_tier` in the quote); none of that
+reaches a printable document. Accounts come from `DEALERS` or a mounted `DEALERS_FILE`, and
+revoking one is removing its entry and redeploying. Configured by environment like
+everything else — see `DEPLOY.md` § 6, and `backend/tests/test_dealers.py` for the contract.
+
+## Selling it
+
+- **`LICENSE`** — the commercial licence. The software is not open source, and this file is
+  what grants a client the right to run it.
+- **`PILOT.md`** — the offer sheet, the pilot measurement plan, the outreach message and
+  the pricing rationale.
 
 ## Mobile / touch
 

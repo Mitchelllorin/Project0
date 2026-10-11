@@ -54,12 +54,19 @@ Then open `http://<host>:$PORT`. `./deploy.sh` with no argument lists every comm
 | `BRAND_ACCENT` | `#dca55e` | Accent colour, `#rrggbb`. Drives buttons, highlights and the quote. |
 | `BRAND_LOGO_URL` | *(none)* | Logo, **HTTPS only** (a mixed-content logo would be silently blocked by the browser). |
 | `DEFAULT_CATALOG` | `euro32` | The catalogue document this instance configures from. |
+| `DEALERS` | *(none)* | The dealer accounts that may sign in, as JSON. See § 6. |
+| `DEALER_TIERS` | list 0%, trade 35% | The price tiers those accounts buy at, as JSON. |
+| `DEALERS_FILE` | *(none)* | A path to the same dealer list as a JSON file. Wins when set. |
+| `DEALER_TIERS_FILE` | *(none)* | The same, for tiers. |
 
 Every value is optional and every value is validated: a typo'd accent or an
-`http://` logo is logged at startup and dropped, and an unknown or unrenderable
-`DEFAULT_CATALOG` falls back to `euro32` with a warning rather than breaking the studio.
-Nothing here is a secret, so `.env` may be handed to the client — but it is gitignored,
-so a client's instance never leaks back into the repository.
+`http://` logo is logged at startup and dropped, an unknown or unrenderable
+`DEFAULT_CATALOG` falls back to `euro32` with a warning rather than breaking the studio,
+and a dealer whose tier does not exist is priced at list — never at a guessed discount.
+
+Everything except the dealer section is not a secret, so `.env` may be handed to the
+client; the dealer codes in it are. `.env` is gitignored either way, so a client's
+instance never leaks back into the repository.
 
 ## 4. Branding — why it is set in two places
 
@@ -99,7 +106,65 @@ If the document is incomplete, the API logs exactly what is wrong and the instan
 back to `euro32` instead of failing every request. `backend/tests/` proves the
 data-only onboarding path; the shipped example is `northline-example.json`.
 
-## 6. Day-2 operations
+## 6. Dealer accounts and trade pricing
+
+One instance is one manufacturer. Its **dealers** are accounts inside that instance: a
+code that resolves to a real business, and a trade tier that decides what that business
+pays for the parts it orders.
+
+```jsonc
+// DEALERS  — one entry per account. `code` is a shared secret; generate it.
+[{"id": "northline-01", "name": "Northline Kitchen & Bath",
+  "code": "<a long random string>", "tier": "trade", "region": "NE"},
+ {"id": "harbour-02", "name": "Harbour Interiors", "code": "<another>", "tier": "distributor"}]
+
+// DEALER_TIERS  — optional. Unset, the shipped defaults are list 0% and trade 35%.
+[{"id": "list", "name": "List", "discount": 0},
+ {"id": "trade", "name": "Trade", "discount": 0.35},
+ {"id": "distributor", "name": "Distributor", "discount": 0.45}]
+```
+
+The `discount` applies to what the manufacturer supplies — materials, components and
+surfaces. The dealer's own labour and finishing are theirs, and are not discounted.
+
+**Onboarding a dealer is configuration, not code and not a rebuild:**
+
+```bash
+openssl rand -base64 24                    # the code; never hand-pick one
+cp .env.prod.example .env                  # then set DEALERS, or DEALERS_FILE
+./deploy.sh up
+```
+
+Past a handful of accounts, put the list in a file the manufacturer owns and mount it
+read-only, rather than pasting JSON into `.env`:
+
+```yaml
+# docker-compose.prod.yml → services.api
+volumes:
+  - ./dealers.json:/app/dealers.json:ro
+```
+
+```bash
+DEALERS_FILE=/app/dealers.json
+```
+
+**How a code is treated.** It is compared in constant time, never logged (only the
+dealer's id is, on sign-in), never echoed back, and never stored in a design or a share
+link. It leaves the browser in exactly one place: the `X-Dealer-Code` header on
+`POST /api/configure`. There is no session cookie and nothing server-side to expire, so
+**revoking a dealer means removing their entry and redeploying** — a live code that is
+gone from `DEALERS` gets a `401` on its next request and the studio drops back to list
+pricing.
+
+**What a dealer sees that a visitor does not:** their cost, their margin, and a
+client price they can discount from list. Nothing else changes — the trade discount,
+cost and margin appear in the studio and on **no printable document**; the customer's
+copy is list price less whatever discount the dealer gives.
+
+**Without any dealers configured,** the instance is a public list-price studio. That is a
+supported, tested state, not a broken one.
+
+## 7. Day-2 operations
 
 ```bash
 ./deploy.sh logs           # follow both app logs
@@ -120,7 +185,7 @@ docker compose -f docker-compose.prod.yml cp mongo:/tmp/backup.gz ./backup-$(dat
 **Updating.** `git pull` (or copy in the new source) then `./deploy.sh up` — images are
 rebuilt and only what changed is recreated. Data survives.
 
-## 7. TLS and the public origin
+## 8. TLS and the public origin
 
 `web` speaks plain HTTP on `$PORT`; put it behind whatever terminates TLS the client
 already runs, or add a TLS proxy in front:
@@ -141,7 +206,7 @@ boundary either). For a public deployment put an auth layer — or a manufacture
 intranet — in front of it. Signed-in multi-user access is a product feature, not a
 deployment flag.
 
-## 8. Verification checklist
+## 9. Verification checklist
 
 After any deployment, in this order:
 
@@ -153,6 +218,11 @@ curl -s -o /dev/null -w '%{http_code}\n' localhost:8080/          # 200
 curl -s -X POST localhost:8080/api/configure \
      -H 'Content-Type: application/json' \
      -d '{"catalog":"<name>","layout":"straight"}'  # 200, cabinets + quote
+# Only if this instance has dealers (DEPLOY.md § 6):
+curl -s -X POST localhost:8080/api/dealer/session \
+     -H 'Content-Type: application/json' -d '{"code":"<a real code>"}'  # 200, tier + discount
+curl -s -X POST localhost:8080/api/configure \
+     -H 'Content-Type: application/json' -H 'X-Dealer-Code: not-a-code' -d '{}'  # 401
 ```
 
 Then in a browser: the header and page title carry the client's name, the logo loads, a
@@ -160,7 +230,7 @@ cabinet can be selected and exploded, *Share* produces a link that reopens the s
 design, and *Quote → Download BOM* produces a CSV. Those four cover branding, geometry,
 persistence and the sales outputs.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Cause and fix |
 |---|---|
@@ -169,12 +239,19 @@ persistence and the sales outputs.
 | The studio loads but says it cannot reach the assembly service | `api` is down, or something other than this stack is answering on `$PORT`. Then check `./deploy.sh logs api`. |
 | The browser still shows the old brand | A returned visitor's own saved branding wins by design; *Branding → Restore studio identity* returns to the deployment's. If the header is also stale, the bundle was not rebuilt: `./deploy.sh up`. |
 | A catalogue edit has no effect | Catalogues are cached in the process — restart the API. |
+| A dealer signs in but the price does not move | Their `tier` is not an id in `DEALER_TIERS`. An unknown tier is priced at **list** and logged — `./deploy.sh logs api`. |
+| A dealer is signed out mid-session | The API answered `401` to their code, so the studio dropped it: the account was removed, or `DEALERS` was emptied, since they signed in. |
+| No code can be used at all | `DEALERS` is unset, malformed, or every entry was refused — a code shorter than 8 characters is dropped. The API logs each refusal, with the code redacted. |
 
-## 10. What this instance is not
+## 11. What this instance is not
 
 - **Single client.** One origin, one brand, one default catalogue. Serving two
   manufacturers from one instance is a product change, not a config change.
-- **No accounts.** See §7.
+- **Dealer accounts, and nothing else.** A dealer signs in with a code from `DEALERS`
+  and is priced at their tier (§ 6). There is no self-service signup, no password reset
+  and no server-side session to expire — revoking an account is deleting its entry and
+  redeploying. There is no end-customer login either: a design belongs to this browser,
+  or travels in a share link.
 - **The catalogue is loaded at startup and cached.** After editing a catalogue document,
   restart the API (`./deploy.sh up`) — a warm cache will otherwise keep serving the old
   one.

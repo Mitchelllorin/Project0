@@ -29,6 +29,17 @@ services:
       BRAND_ACCENT: ${BRAND_ACCENT:-}
       BRAND_LOGO_URL: ${BRAND_LOGO_URL:-}
       DEFAULT_CATALOG: ${DEFAULT_CATALOG:-}
+      # Dealer accounts and the price tiers they buy at. JSON, and quoted so the JSON
+      # is not mistaken for YAML. Empty is a valid instance: nobody can sign in, and
+      # every visitor is quoted list price.
+      DEALERS: '${DEALERS:-}'
+      DEALER_TIERS: '${DEALER_TIERS:-}'
+      DEALERS_FILE: ${DEALERS_FILE:-}
+      DEALER_TIERS_FILE: ${DEALER_TIERS_FILE:-}
+    # A manufacturer with more than a handful of dealers keeps its list in a file it
+    # owns, mounted read-only, instead of a value in this file:
+    # volumes:
+    #   - ./dealers.json:/app/dealers.json:ro
     depends_on:
       - mongo
 

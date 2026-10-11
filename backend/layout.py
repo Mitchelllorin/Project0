@@ -67,7 +67,10 @@ def adjacent(a,b):
     return (min(a1,b1)-max(a0,b0)>10 and min(abs(a3-b2),abs(b3-a2))<25) or (min(a3,b3)-max(a2,b2)>10 and min(abs(a1-b0),abs(b1-a0))<25)
 
 
-def make_quote(cabinets,config):
+def make_quote(cabinets,config,dealer=None):
+    # `dealer` is a signed-in dealer's view (id, name, tier, tier_name, discount) or None for
+    # list pricing. It arrives already resolved by the server: this function never sees an
+    # access code and never accepts a discount from the request body.
     grouped=defaultdict(lambda:dict(quantity=0,total=0))
     for c in cabinets:
         for p in c['parts']:
@@ -90,4 +93,19 @@ def make_quote(cabinets,config):
     subtotal=round(sum(l['total'] for l in lines),2)
     labor=round(len(cabinets)*2.5*config.quote.labor_rate,2) if config.quote.include_labor else 0
     finishing=round(len(cabinets)*{'oak':85,'walnut':125,'sage':95,'ivory':80,'charcoal':95}[config.finish]*(1.2 if config.style=='shaker' else 1.35 if config.style=='fluted' else 1),2) if config.quote.include_finish else 0
-    return dict(lines=lines,subtotal=subtotal,labor=labor,finishing=finishing,total=round(subtotal+labor+finishing,2),currency='USD',illustrative=True)
+    list_total=round(subtotal+labor+finishing,2)
+    quote=dict(lines=lines,subtotal=subtotal,labor=labor,finishing=finishing,total=list_total,currency='USD',illustrative=True)
+    if dealer is None:
+        return quote
+    # The trade discount is on what the manufacturer supplies; the dealer's own labour and
+    # finishing are theirs at cost. Both are shown, so the margin is never a guess.
+    cost_materials=round(subtotal*(1-dealer.discount),2)
+    cost_total=round(cost_materials+labor+finishing,2)
+    resale=getattr(config.quote,'resale_discount',0) or 0
+    client_total=round(list_total*(1-resale),2)
+    margin=round(client_total-cost_total,2)
+    quote['price_tier']=dict(tier=dealer.tier,tier_name=dealer.tier_name,discount=dealer.discount,
+        list_total=list_total,cost_materials=cost_materials,cost_total=cost_total,
+        client_total=client_total,margin=margin,margin_pct=round(margin/client_total,4) if client_total else 0.0,
+        currency='USD')
+    return quote

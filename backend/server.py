@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, Depends, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 from uuid import UUID
 import logging
 import os
-from models import Configuration, SceneResponse, GroupRequest, Project, CatalogItem, ProductAssembly, Deployment
+from models import Configuration, SceneResponse, GroupRequest, Project, CatalogItem, ProductAssembly, Deployment, DealerSession, DealerSignIn
 from layout import build_layout, dimensions, make_quote, adjacent
 from assembly import make_parts
 from recipe import load_catalog, validate_catalog, available_catalogs
 from deployment import deployment
+import dealers
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s: %(message)s')
 logger = logging.getLogger('kitchen-studio')
@@ -55,12 +56,38 @@ async def catalogs():
 async def catalog():
     return await db.products.find({}, {'_id':0,'parts':0}).to_list(20)
 
+def current_dealer(x_dealer_code:str|None=Header(default=None)):
+    """Who is asking, if it is a dealer.
+
+    No header is not an error: it is the anonymous, list-price view every visitor and
+    every shared link gets. A header that does not resolve is a 401, so a dealer whose
+    access was revoked is told rather than quietly re-priced at list.
+    """
+    if not x_dealer_code:
+        return None
+    if not dealers.is_configured():
+        raise HTTPException(401,'Dealer sign-in is not configured on this deployment')
+    view=dealers.resolve(x_dealer_code)
+    if view is None:
+        raise HTTPException(401,'That dealer access code is not recognised')
+    return view
+
+@api.post('/dealer/session',response_model=DealerSession)
+async def dealer_session(credentials:DealerSignIn):
+    if not dealers.is_configured():
+        raise HTTPException(503,'Dealer sign-in is not configured on this deployment')
+    view=dealers.resolve(credentials.code)
+    if view is None:
+        raise HTTPException(401,'That dealer access code is not recognised')
+    logger.info('Dealer %s signed in on tier %s',view.id,view.tier)
+    return dict(dealer=view.model_dump())
+
 @api.post('/configure',response_model=SceneResponse)
-async def configure(config:Configuration):
+async def configure(config:Configuration,dealer=Depends(current_dealer)):
     catalog=resolve_catalog(config.catalog)
     cabinets=build_layout(config,catalog)
     counts={k:sum(1 for c in cabinets for p in c['parts'] if p['category']==k) for k in ['panel','hardware','fastener']}
-    return dict(cabinets=cabinets,quote=make_quote(cabinets,config),dimensions=dimensions(cabinets,catalog),counts=counts)
+    return dict(cabinets=cabinets,quote=make_quote(cabinets,config,dealer),dimensions=dimensions(cabinets,catalog),counts=counts)
 
 @api.get('/assemblies/{product_id}',response_model=ProductAssembly)
 async def assembly(product_id:str):

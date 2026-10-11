@@ -1,0 +1,225 @@
+# Kitchen Studio — Commercial Licence
+
+Copyright (c) 2026 Mitchell Lorin. All rights reserved.
+
+**This is not open source.** No part of this repository is licensed for public use,
+modification or redistribution. It is licensed to one client at a time, under the terms
+below, and every copy of it remains the property of the copyright holder.
+
+> **Plain-English summary — not the agreement.** A manufacturer pays to run a branded
+> instance of this software for its own business and its own dealers. It may not resell
+> the software, publish it as its own product, or hand copies of the source to anyone
+> else. The manufacturer owns its catalogue and its designs; the engine stays ours. The
+> quotes it produces are illustrative and must be verified before anyone cuts material or
+> sends a customer a price. The numbered terms below govern.
+
+**Not legal advice.** This document was drafted as a starting point, not by a lawyer, and
+no warranty is given as to its fitness for any particular jurisdiction. Have it reviewed
+before you sign or send it to a client. Square-bracketed fields are filled in per
+engagement.
+
+---
+
+## 1. Definitions
+
+**"Software"** — the source code, documentation and catalogue-format specification in
+this repository, including the rules engine, the studio interface, the deployment tooling
+and any updates supplied under § 6.
+
+**"Licensor"** — the copyright holder named above.
+
+**"Licensee"** — the single legal entity named in the Order that accepts these terms.
+
+**"Order"** — the written quotation, offer sheet or purchase order that identifies the
+Licensee, the fees, the term and any Catalogue Work under § 4.
+
+**"Instance"** — one deployment of the Software, serving one brand at one origin, as
+described in `DEPLOY.md`.
+
+**"Licensee Catalogue"** — the catalogue documents (§ 3) and any other data describing
+the Licensee's products: dimensions, materials, hardware, pricing, product families.
+
+**"Dealer"** — a business the Licensee authorises to use its Instance, identified by an
+access code configured under § 5.
+
+## 2. Licence grant
+
+2.1 Subject to payment of the fees in the Order and to the restrictions in § 3, the
+Licensor grants the Licensee a **non-exclusive, non-transferable, non-sublicensable,
+worldwide** licence, for the term stated in the Order, to:
+
+  (a) deploy and run the number of Instances stated in the Order, branded to the
+      Licensee, for the Licensee's own internal business purposes;
+
+  (b) enable its Dealers to use those Instances to configure products, price them and
+      produce documents for the Licensee's and their own customers;
+
+  (c) make a reasonable number of copies of the Software for backup, testing and
+      disaster recovery.
+
+2.2 **Source access is not a grant.** Where the Licensee receives the source (as on
+delivery), it receives it to run and configure the Instance and to write its own
+catalogue documents. No other right in the source is granted.
+
+2.3 All rights not expressly granted are reserved by the Licensor.
+
+## 3. Restrictions
+
+The Licensee shall not, and shall not permit any third party to:
+
+  (a) sell, resell, rent, lease, sublicense, distribute or otherwise make the Software
+      available to any person other than its Dealers and its own personnel, or operate it
+      as a service for third parties;
+
+  (b) publish, disclose or make the source available, in whole or in part, except to
+      personnel and contractors bound by written confidentiality obligations at least as
+      protective as these terms;
+
+  (c) use the Software, or any part of its design, to develop, market or supply a
+      competing product configurator, or to benchmark or publish performance comparisons
+      without the Licensor's written consent;
+
+  (d) remove, obscure or alter any copyright, attribution or licence notice in the
+      Software, or present the Software as its own product where the Licensor's
+      authorship is material to the deal;
+
+  (e) reverse engineer, decompile or disassemble the Software, except to the extent that
+      this restriction is prohibited by applicable law, or use it to build a substantially
+      similar product;
+
+  (f) use the Software to produce any document that the Licensee presents as a binding
+      manufacturer quotation, or as a bill of materials for production, without the
+      verification required by § 7.
+
+**Dealer codes are the Licensee's responsibility.** The Licensee shall issue access codes
+only to businesses it has authorised, keep them confidential, revoke them when the
+relationship ends, and notify the Licensor promptly of any suspected misuse.
+
+## 4. Catalogue work and ownership
+
+4.1 **The Licensee owns its Catalogue.** All Licensee Catalogue documents, and all
+designs, layouts and customer records created in the Instance, remain the Licensee's
+property. The Licensor claims no licence over them beyond what is needed to operate the
+Instance and to provide the services in the Order.
+
+4.2 **The Licensor owns the engine.** The Software, its architecture, its rules engine,
+its catalogue *format* and specification, and all improvements to any of them, remain the
+Licensor's property. Writing a catalogue document under the published schema does not
+create any interest in the engine.
+
+4.3 Where the Licensor performs **Catalogue Work** — digitising product families into
+catalogue documents — the resulting documents are delivered to the Licensee and owned by
+it. The Licensor may retain and reuse the *techniques* used to produce them, but not the
+Licensee's catalogue data, dimensions, pricing or product names.
+
+4.4 On termination, the Licensor shall make the Licensee's Catalogue and design data
+available for export in a machine-readable format, and shall delete its own copies within
+[30] days of a written request, save for copies required by law or held in routine
+backups.
+
+## 5. Dealer accounts and pricing tiers
+
+5.1 Dealer accounts, their access codes and their price tiers are configured in the
+Instance by the Licensee (see `DEPLOY.md` § 6). The Licensor does not set, verify or
+police the Licensee's dealer pricing.
+
+5.2 The Licensee is responsible for the accuracy of every tier, discount and price in its
+arrangement, and for what its Dealers charge their own customers.
+
+5.3 Access codes are stored in configuration, not in a licence-management service. A code
+is valid until it is removed from the configuration and the Instance is redeployed; there
+is no self-service signup, password reset or session expiry, and none is promised.
+
+## 6. Support, updates and term
+
+6.1 During the term, the Licensor shall provide [the support stated in the Order], and
+shall supply updates to the Software that it makes generally available to its licensees.
+
+6.2 Unless the Order says otherwise, the term is [12 months] from delivery, renewing for
+successive [12-month] periods unless either party gives [30] days' written notice.
+
+6.3 Each catalogue **price refresh** — updating the Licensee's catalogue when its price
+list, hardware or product families change — is part of the recurring service and is
+covered by the recurring fee for up to [one] refresh per [quarter], or as stated in the
+Order.
+
+## 7. Illustrative pricing — the warranty that matters most
+
+7.1 Prices produced by the Software are **illustrative**. They are built from the
+Licensee's catalogue rates and a set of stated assumptions, including surface rates,
+labour and finishing allowances. They are not a manufacturer quotation and are not an
+offer to sell.
+
+7.2 **The Licensee is responsible for verifying** every figure and every production
+document before it is relied on — including cut sizes, machining, edge banding, part
+counts and totals — against its own engineering and pricing systems. The `QuotePage`
+output, the production BOM export and the CSV export all carry a disclaimer saying so and
+that disclaimer is a term of this licence.
+
+7.3 The Software is not a substitute for the Licensee's design, estimating, engineering
+or production systems, and is not warranted to produce a manufacturable result.
+
+## 8. Fees
+
+8.1 Fees, currency and payment terms are as stated in the Order. One-off fees for
+deployment and Catalogue Work are payable [on delivery]; recurring fees are payable
+[annually in advance].
+
+8.2 Late payment may result in suspension of the Instance after [14] days' written
+notice. The Licensee's Catalogue and design data shall be exported to it under § 4.4
+before any deletion.
+
+8.3 Fees are exclusive of taxes.
+
+## 9. Warranty and disclaimer
+
+9.1 The Licensor warrants that it has the right to grant this licence, and that the
+Software will perform substantially as described in the documentation supplied with it
+for [30] days from delivery.
+
+9.2 **Except as stated in § 9.1, the Software is provided "as is", without warranty of any
+kind, express or implied, including any implied warranty of merchantability, fitness for a
+particular purpose, accuracy of pricing, or non-infringement.** The Licensor does not
+warrant that the Software will be uninterrupted or error-free, or that any price, cut list
+or production document it produces is correct.
+
+9.3 The Licensee's sole remedy for breach of § 9.1 is repair, replacement or refund of the
+fees paid for the affected period, at the Licensor's option.
+
+## 10. Limitation of liability
+
+10.1 Neither party is liable for indirect, incidental, special or consequential loss,
+loss of profit, loss of business, loss of data or business interruption, however caused.
+
+10.2 The Licensor's total aggregate liability under or in connection with this agreement
+is limited to the fees paid by the Licensee in the [12] months preceding the claim.
+
+10.3 Nothing limits liability for death or personal injury caused by negligence, fraud, or
+any liability that cannot lawfully be limited.
+
+## 11. Termination
+
+11.1 Either party may terminate for material breach not remedied within [30] days of
+written notice, or immediately on the other's insolvency.
+
+11.2 On termination the Licensee shall stop using the Software, delete or return the
+source and any copies, and destroy or confirm deletion of all Instances, except that it
+may retain its own Catalogue and exported data under § 4.4.
+
+## 12. General
+
+12.1 **Entire agreement.** This licence and the Order are the whole agreement and
+supersede prior discussions.
+
+12.2 **Assignment.** The Licensee may not assign this agreement without the Licensor's
+written consent.
+
+12.3 **Governing law.** This agreement is governed by the laws of [jurisdiction], and the
+parties submit to the exclusive jurisdiction of its courts.
+
+12.4 **Notices** in writing to the addresses stated in the Order.
+
+---
+
+*Signature and Order details are recorded in the Order document. This licence takes effect
+on the earlier of the Licensee's signature or its first deployment of an Instance.*

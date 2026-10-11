@@ -8,6 +8,9 @@ class QuoteSettings(BaseModel):
     include_labor: bool = True
     include_finish: bool = True
     labor_rate: float = Field(65, ge=0, le=1000)
+    # What a signed-in dealer knocks off list for their own customer. Their choice,
+    # not a privilege: the trade discount above is the part that must be earned.
+    resale_discount: float = Field(0, ge=0, le=0.9)
 
 
 class Placement(BaseModel):
@@ -106,6 +109,68 @@ class QuoteLine(BaseModel):
     total: float
 
 
+class PriceTier(BaseModel):
+    """What one of a manufacturer's price tiers buys at, off list.
+
+    `discount` applies to the products the manufacturer supplies — materials,
+    components and surfaces — not to the dealer's own labour or finishing.
+    """
+    id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=60)
+    discount: float = Field(0, ge=0, lt=1)
+
+
+class DealerRecord(BaseModel):
+    """A dealer account as configured (DEALERS), including its access code.
+
+    The code has a floor on its length so a deployment cannot admit an account
+    that is trivially guessable.
+    """
+    id: str = Field(min_length=1, max_length=60)
+    name: str = Field(min_length=1, max_length=80)
+    code: str = Field(min_length=8, max_length=200)
+    tier: str = Field('list', min_length=1, max_length=40)
+    region: str = Field('', max_length=60)
+    active: bool = True
+
+
+class DealerView(BaseModel):
+    """A signed-in dealer, as the studio is told about them. Never the code."""
+    id: str
+    name: str
+    tier: str
+    tier_name: str
+    discount: float
+    region: str = ''
+
+
+class DealerSignIn(BaseModel):
+    code: str = Field(min_length=1, max_length=200)
+
+
+class DealerSession(BaseModel):
+    dealer: DealerView
+
+
+class QuotePriceTier(BaseModel):
+    """Trade pricing for a signed-in dealer.
+
+    `cost_*` is what the dealer pays the manufacturer; `client_*` is what the
+    dealer would quote their own customer at the resale discount they have
+    chosen. Absent entirely when nobody is signed in.
+    """
+    tier: str
+    tier_name: str
+    discount: float
+    list_total: float
+    cost_materials: float
+    cost_total: float
+    client_total: float
+    margin: float
+    margin_pct: float
+    currency: str = 'USD'
+
+
 class Quote(BaseModel):
     lines: list[QuoteLine]
     subtotal: float
@@ -114,6 +179,7 @@ class Quote(BaseModel):
     total: float
     currency: str = 'USD'
     illustrative: bool = True
+    price_tier: Optional[QuotePriceTier] = None
 
 
 class SceneResponse(BaseModel):
@@ -126,7 +192,6 @@ class SceneResponse(BaseModel):
 class GroupRequest(BaseModel):
     configuration: Configuration
     cabinet_ids: list[str] = Field(min_length=2, max_length=10)
-
 
 class Brand(BaseModel):
     name: str = Field('3D Learning Family', min_length=1, max_length=60)
