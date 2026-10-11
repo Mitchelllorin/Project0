@@ -3,8 +3,12 @@ const path = require("path");
 require("dotenv").config();
 
 // Check if we're in development/preview mode (not production build)
-// Craco sets NODE_ENV=development for start, NODE_ENV=production for build
-const isDevServer = process.env.NODE_ENV !== "production";
+// Craco sets NODE_ENV=development for start, NODE_ENV=production for build,
+// NODE_ENV=test under jest. Test is excluded deliberately: the visual-edits babel
+// plugin wraps dynamic JSX children in a <span>, which is invalid inside <option>
+// and fails the layout widget's test with a DOM-nesting error the moment the
+// package happens to be installed. The plugin has nothing to offer jest.
+const isDevServer = !["production", "test"].includes(process.env.NODE_ENV);
 
 // Environment variable overrides
 const config = {
