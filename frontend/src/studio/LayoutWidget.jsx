@@ -4,6 +4,7 @@ import {toast} from 'sonner';
 import {useStudio} from './StudioContext';
 import {MergeDialog} from './MergeDialog';
 import {GIZMO_MODES,WIDTH_OPTIONS,groupFor,placementReadout,snapLabel} from './layoutWidget';
+import {PanelDismiss,PanelPill,usePanel} from './Panels';
 
 // Deliberately one row. While you are arranging, the card must not sit over the
 // model, so the controls reached for constantly — move, rotate, merge, done —
@@ -13,11 +14,16 @@ export function LayoutWidget(){
   const {config,scene,selected,selectCabinet,setArrange,gizmoMode,setGizmoMode,setCabinetWidth,addCabinet,removeCabinet,resetArrangement,update}=useStudio();
   const [mergeOpen,setMergeOpen]=useState(false);
   const [open,setOpen]=useState(false);
+  // `open` above is the More disclosure inside the widget; `panel` is the whole widget
+  // being put away. Dismissing it leaves a pill in the same corner, so arranging can be
+  // got out of and back into without leaving arrange mode.
+  const panel=usePanel();
   const cabinets=scene?scene.cabinets:[];
   const current=cabinets.find(c=>c.id===selected[0])||null;
   const group=groupFor(config.groups,selected[0]);
   const readout=placementReadout(current,config.units);
   const unmerge=()=>{update({groups:config.groups.filter(g=>g!==group)});toast.success('Cabinets unmerged. All components preserved.');};
+  if(!panel.open)return <div className="layout-widget is-collapsed" data-testid="layout-widget-collapsed"><PanelPill label="the layout controls" text="Layout" icon={<Move size={13}/>} testId="layout-expand" onRestore={panel.restore}/></div>;
   return <div className="layout-widget" data-testid="layout-widget" role="group" aria-label="Cabinet layout">
     {open&&<div className="layout-extra" data-testid="layout-extra">
       <div className="arrange-row"><label className="layout-select"><span>Cabinet</span><div className="select-wrap"><select data-testid="layout-cabinet-select" aria-label="Cabinet the gizmo controls" value={selected[0]||''} onChange={e=>selectCabinet(e.target.value)}>{cabinets.map(c=><option key={c.id} value={c.id}>{c.id} · {c.name}</option>)}</select><ChevronDown size={13}/></div></label></div>
@@ -32,6 +38,7 @@ export function LayoutWidget(){
       {group?<button type="button" data-testid="layout-unmerge" title={`Unmerge ${group.join(' + ')}`} onClick={unmerge}><Unlink size={13}/> Unmerge</button>:<button type="button" data-testid="layout-merge" title="Merge neighbouring cabinets into one run" onClick={()=>setMergeOpen(true)}><Link2 size={13}/> Merge</button>}
       <button type="button" className={open?'active':''} data-testid="layout-more" aria-expanded={open} title="More layout controls" onClick={()=>setOpen(!open)}><SlidersHorizontal size={13}/> {open?'Less':'More'}</button>
       <button type="button" className="accent" data-testid="done-arranging" onClick={()=>setArrange(false)}><Check size={13}/> Done</button>
+      <PanelDismiss label="the layout controls" testId="layout-dismiss" className="layout-dismiss" onDismiss={panel.dismiss}/>
     </div>
     {mergeOpen&&<MergeDialog open={mergeOpen} onOpenChange={setMergeOpen}/>}
   </div>;

@@ -222,3 +222,58 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 @media(max-width:1250px){.dealer-badge{max-width:165px}}
 @media(max-width:1000px){.dealer-badge small{display:none}}
 @media(max-width:700px){.dealer-badge{max-width:52px;padding:8px 10px}.dealer-badge>span{display:none}}
+
+/* =====================================================================
+   Floating panels: glass, and a way out of every one of them.
+
+   Everything that floats over the 3D view can be dismissed, and dismissing a
+   panel leaves a labelled pill in its place — so there is always a way out of a
+   panel and always a way back into it. Backgrounds are translucent with a
+   backdrop blur instead of opaque: the blur is what keeps the text readable, so
+   the model can stay visible *through* the panel rather than being covered by it.
+
+   Every translucent colour is declared twice — the palette value first, then the
+   color-mix() one — so an engine without color-mix() falls back to the original
+   opaque panel instead of rendering unreadable text over the model.
+   ===================================================================== */
+
+/* The control that puts a panel away. Its placement is per panel (below), because
+   an absolutely positioned overlay would land on top of, or be clipped by, the
+   panel it is meant to get out of the way. */
+.panel-dismiss{display:grid;place-items:center;width:24px;height:24px;flex:0 0 auto;padding:0;border:0;border-radius:5px;background:transparent;color:inherit;opacity:.6;pointer-events:auto;cursor:pointer}
+.panel-dismiss:hover,.panel-dismiss:focus-visible{opacity:1;background:var(--c150)}
+
+/* The pill that brings it back, sitting in the panel's own container so it keeps
+   that panel's corner and its responsive position for free.
+   Two classes on purpose: `.view-dock>button`, `.viewport-top-tools button` and
+   `.arrange-row button` are each one class plus a type, and would otherwise
+   reshape the pill into whatever shape that row's buttons are. */
+.panel-pill.panel-pill{display:flex;align-items:center;gap:8px;flex:0 0 auto;width:auto;height:auto;padding:10px 15px;border:1px solid var(--c84);border-radius:999px;color:var(--c86);background:var(--c83);background:color-mix(in srgb,var(--c83) 34%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-size:11px;white-space:nowrap;pointer-events:auto;cursor:pointer}
+.panel-pill.panel-pill:hover,.panel-pill.panel-pill:focus-visible{color:var(--c88);background:color-mix(in srgb,var(--c83) 52%,transparent)}
+.panel-pill span{white-space:nowrap}
+@media(pointer:coarse){.panel-dismiss{width:34px;height:34px}.panel-pill.panel-pill{padding:12px 18px;min-height:44px}}
+
+/* A collapsed panel gives up its chrome, so the pill is not a bubble inside a
+   bubble. It keeps its position and its breakpoint overrides. */
+.view-dock.is-collapsed,.layout-widget.is-collapsed{background:none;border:0;box-shadow:none;padding:0;height:auto;max-height:none;overflow:visible;backdrop-filter:none;-webkit-backdrop-filter:none}
+
+/* Caption — the dismiss rides in the eyebrow line, not over the model. */
+.viewport-heading .heading-dismiss{width:22px;height:22px;margin-left:-1px}
+/* View tools — at the top of the column, where that panel's corner is. */
+.viewport-top-tools .tools-dismiss{width:30px;height:30px;padding:0;border:1px solid var(--c77);color:var(--c76);background:var(--c78);background:color-mix(in srgb,var(--c78) 34%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.viewport-top-tools .tools-dismiss:hover{background:color-mix(in srgb,var(--c79) 60%,transparent);color:var(--c80)}
+/* Camera dock — the last item in the row, sized like the dock's own buttons. */
+.view-dock .dock-dismiss{width:25px;height:30px;border-radius:3px}
+.view-dock .dock-dismiss:hover{background:var(--c87);color:var(--c88)}
+/* Layout — after Done, in the same row. */
+.arrange-row .layout-dismiss{width:26px;height:26px;padding:0;justify-content:center}
+
+/* The glass itself. */
+.view-dock{background:var(--c83);background:color-mix(in srgb,var(--c83) 40%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.viewport-top-tools button{background:var(--c78);background:color-mix(in srgb,var(--c78) 34%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.layout-widget{background:#1e231f;background:color-mix(in srgb,#1e231f 44%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.explode-controls{background:var(--c149);background:color-mix(in srgb,var(--c149) 44%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.mobile-panel-buttons button{background:var(--c218);background:color-mix(in srgb,var(--c218) 42%,transparent)}
+.connection-error{background:#4b3026;background:color-mix(in srgb,#4b3026 62%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.connection-error .error-dismiss{color:#ffca8c;opacity:.85}
+.connection-error .error-dismiss:hover{background:#ffffff24}

@@ -65,7 +65,7 @@ describe('LayoutWidget', () => {
       'add-base', 'add-drawers', 'add-corner', 'add-corner-out',
       'remove-cabinet', 'reset-arrangement'].forEach(id => expect(byTestId(c, id)).toBeNull());
     // ...while the controls you actually reach for are on the row.
-    ['gizmo-translate', 'gizmo-rotate', 'layout-merge', 'layout-more', 'done-arranging']
+    ['gizmo-translate', 'gizmo-rotate', 'layout-merge', 'layout-more', 'layout-dismiss', 'done-arranging']
       .forEach(id => expect(byTestId(c, id)).not.toBeNull());
   });
 
@@ -109,6 +109,33 @@ describe('LayoutWidget', () => {
 
     openMore(c);
     expect(byTestId(c, 'layout-group-readout').textContent).toContain('B01 + B02');
+  });
+
+  it('can be put away entirely, and comes back from its pill', () => {
+    const c = render();
+    act(() => byTestId(c, 'layout-dismiss').click());
+
+    // Nothing of the card is left over the model...
+    expect(byTestId(c, 'layout-widget')).toBeNull();
+    ['layout-bar', 'gizmo-translate', 'layout-merge', 'layout-more', 'done-arranging']
+      .forEach(id => expect(byTestId(c, id)).toBeNull());
+    // ...but the way back is labelled, and occupies the same corner.
+    const collapsed = byTestId(c, 'layout-widget-collapsed');
+    expect(collapsed.className).toContain('layout-widget');
+    expect(collapsed.className).toContain('is-collapsed');
+    expect(byTestId(c, 'layout-expand').textContent).toContain('Layout');
+
+    act(() => byTestId(c, 'layout-expand').click());
+    expect(byTestId(c, 'layout-bar')).not.toBeNull();
+    expect(byTestId(c, 'layout-widget-collapsed')).toBeNull();
+  });
+
+  it('leaves arrange mode alone when it is put away', () => {
+    // Dismissing hides the controls; it must not also drop the mode, or the gizmo
+    // stays on screen with nothing visible to turn it off from.
+    const c = render();
+    act(() => byTestId(c, 'layout-dismiss').click());
+    expect(mockStudio.setArrange).not.toHaveBeenCalled();
   });
 
   it('finishes from Done', () => {
