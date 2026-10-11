@@ -54,6 +54,26 @@ describe('ExplodeControls', () => {
     expect(byTestId(c, 'explode-dismiss')).not.toBeNull();
   });
 
+  it('is one row on the bottom edge: title, slider, stages and the way out', () => {
+    // The middle of the screen is the product, so nothing may be centred over it
+    // and the bar must not stack into a card. Everything is a sibling in one row.
+    const c = render();
+    const row = byTestId(c, 'explode-controls');
+    expect(byTestId(c, 'explode-title').parentElement).toBe(row);
+    expect(byTestId(c, 'explode-slider').parentElement).toBe(row);
+    expect(byTestId(c, 'explode-stage-hardware').closest('.explode-stages').parentElement).toBe(row);
+    expect(byTestId(c, 'explode-dismiss').parentElement).toBe(row);
+    expect(row.querySelector('.explode-title-actions')).toBeNull();
+  });
+
+  it('uses the same dismiss control as every other floating panel', () => {
+    const c = render();
+    const dismiss = byTestId(c, 'explode-dismiss');
+    expect(dismiss.className).toContain('panel-dismiss');
+    expect(dismiss.getAttribute('aria-label')).toBe('Hide the explode controls');
+    expect(dismiss.getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('offers the named stages that drive the explode amount', () => {
     const c = render();
     ['assembled', 'panels', 'hardware', 'fasteners'].forEach(stage => {

@@ -2,7 +2,7 @@ import React,{useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Canvas} from '@react-three/fiber';
 import {OrbitControls} from '@react-three/drei';
-import {Box,Layers,MoveUpRight,Link2,Unlink,ChevronUp,ChevronRight,ArrowUpRight,Search,Check,Component,Settings2,ArrowRight,X} from 'lucide-react';
+import {Box,Layers,MoveUpRight,Link2,Unlink,ChevronUp,ChevronRight,ArrowUpRight,Search,Check,Component,Settings2,ArrowRight} from 'lucide-react';
 import {Button} from '../components/ui/button';
 import {EXPLODE_PANEL_MINIMISED,EXPLODE_PANEL_OPEN,explodePanelState} from './explodePanel';
 import {toast} from 'sonner';
@@ -12,6 +12,7 @@ import {clientTotal} from './dealer';
 import {PartGeometry} from './PartGeometry';
 import {SectionHeading,Select} from './Controls';
 import {MergeDialog} from './MergeDialog';
+import {PanelDismiss} from './Panels';
 
 
 export function AssemblyTree() {
@@ -61,12 +62,13 @@ export function Inspector({assembly=false}) {
 
 export function ExplodeControls() {
   const {explode,setExplode}=useStudio();
-  // The panel floats in the middle of the viewport over the model (and swallows
-  // orbit drags in its area), so it dismisses to a pill the viewer can bring
-  // back. Session-only on purpose: the next explode assembly gets it again.
+  // The bar sits on the bottom edge — the middle of the screen is the product —
+  // and it still dismisses to a pill the viewer can bring back, because it
+  // swallows orbit drags inside its own footprint. Session-only on purpose: the
+  // next explode assembly gets it again.
   const [state,setState]=useState(EXPLODE_PANEL_OPEN);
   const moveTo=action=>setState(current=>explodePanelState(action,current));
   const percent=Math.round(explode*100);
   if(state===EXPLODE_PANEL_MINIMISED)return <div className="explode-controls is-collapsed" data-testid="explode-controls"><button type="button" className="explode-expand" data-testid="explode-expand" aria-expanded="false" title="Show the explode controls" onClick={()=>moveTo('restore')}><ChevronUp size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></button></div>;
-  return <div className="explode-controls" data-testid="explode-controls"><div className="explode-title"><span><Layers size={15}/> Exploded assembly</span><span className="explode-title-actions"><strong data-testid="explode-percentage">{percent}%</strong><button type="button" className="explode-dismiss" data-testid="explode-dismiss" aria-expanded="true" title="Dismiss the explode controls" aria-label="Dismiss the explode controls" onClick={()=>moveTo('dismiss')}><X size={15}/></button></span></div><input data-testid="explode-slider" aria-label="Explode assembly" type="range" min="0" max="100" value={Math.round(explode*100)} onChange={e=>setExplode(Number(e.target.value)/100)} style={{'--range-progress':`${explode*100}%`}}/><div className="explode-stages">{[['Assembled',0],['Panels',.34],['Hardware',.65],['Fasteners',1]].map(([label,v])=><button key={label} data-testid={`explode-stage-${label.toLowerCase()}`} className={Math.abs(explode-v)<.02?'active':''} onClick={()=>setExplode(v)}><span/>{label}</button>)}</div></div>;
+  return <div className="explode-controls" data-testid="explode-controls"><span className="explode-title" data-testid="explode-title"><Layers size={15}/><span>Exploded assembly</span><strong data-testid="explode-percentage">{percent}%</strong></span><input className="explode-slider" data-testid="explode-slider" aria-label="Explode assembly" type="range" min="0" max="100" value={Math.round(explode*100)} onChange={e=>setExplode(Number(e.target.value)/100)} style={{'--range-progress':`${explode*100}%`}}/><div className="explode-stages">{[['Assembled',0],['Panels',.34],['Hardware',.65],['Fasteners',1]].map(([label,v])=><button key={label} data-testid={`explode-stage-${label.toLowerCase()}`} className={Math.abs(explode-v)<.02?'active':''} onClick={()=>setExplode(v)}><span/>{label}</button>)}</div><PanelDismiss label="the explode controls" testId="explode-dismiss" className="explode-dismiss" onDismiss={()=>moveTo('dismiss')}/></div>;
 }
