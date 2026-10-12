@@ -5,8 +5,14 @@
 # which made `pip install -r requirements.txt` fail on a normal machine.
 fastapi==0.110.1
 uvicorn[standard]==0.25.0
-motor==3.3.1
-pymongo==4.6.3
+# motor and pymongo move together. motor 3.3 reads pymongo internals that 4.9
+# removed (`pymongo.cursor._QUERY_OPTIONS`), so an old motor cannot be paired with
+# a new pymongo at all. The pair below is the one that both imports and passes the
+# suite — and it is what makes Python 3.13+ work: pymongo 4.6.3 has no cp314
+# wheels, so pip fell back to compiling it, which is where an install on a modern
+# Python used to die.
+motor==3.7.1
+pymongo==4.18.3
 python-dotenv>=1.0.1
 pydantic>=2.6.4
 email-validator>=2.2.0

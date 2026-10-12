@@ -37,8 +37,8 @@ check() {
   else echo "node      MISSING — install Node 20 or newer"; missing=1; fi
   if resolve_yarn; then echo "yarn      $($YARN --version 2>/dev/null) (via $YARN)"
   else echo "yarn      MISSING — install Node 20+, which ships corepack"; missing=1; fi
-  if have python3; then echo "python3   $(first_line python3)   (needs 3.11–3.12)"
-  else echo "python3   MISSING — install Python 3.11 or 3.12"; missing=1; fi
+  if have python3; then echo "python3   $(first_line python3)   (needs 3.11 or newer)"
+  else echo "python3   MISSING — install Python 3.11 or newer"; missing=1; fi
   if have docker; then
     if docker info >/dev/null 2>&1; then echo "docker    $(first_line docker) — daemon running"
     else echo "docker    installed, but the daemon is NOT running"; fi
