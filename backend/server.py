@@ -23,7 +23,7 @@ load_dotenv(Path(__file__).parent / '.env')
 # design and read it back. Set MONGO_URL to enable that (local mongod or a hosted one);
 # leave it unset and the studio still runs, with the save endpoints answering 503.
 MONGO_URL=os.environ.get('MONGO_URL','').strip()
-client=AsyncIOMotorClient(MONGO_URL) if MONGO_URL else None
+client=AsyncIOMotorClient(MONGO_URL,serverSelectionTimeoutMS=3000) if MONGO_URL else None
 db=client[os.environ.get('DB_NAME','kitchen_studio')] if client is not None else None
 NO_DATABASE=db is None
 app=FastAPI(title='Kitchen Studio Assembly API',version='1.0.0')
@@ -32,9 +32,26 @@ api=APIRouter(prefix='/api')
 
 @app.on_event('startup')
 async def seed_catalog():
+    global NO_DATABASE, db, client
     if NO_DATABASE:
         logger.warning('No MONGO_URL set — running without a database. The studio renders and prices '
                        'normally; saving a design is disabled.')
+        return
+    # MONGO_URL being set is not the same as a database being *there*. A powered-off or
+    # misconfigured server used to abort startup outright, so the studio refused to open at all
+    # over a feature that is optional. Probe first, with a short timeout, and fall back to the
+    # no-database mode rather than dying.
+    try:
+        await client.admin.command('ping')
+    except Exception as exc:
+        logger.warning('MONGO_URL is set (%s) but no database answered (%s). Continuing without a '
+                       'database: the studio renders and prices normally; saving a design is '
+                       'disabled.', MONGO_URL, exc)
+        try:
+            client.close()
+        except Exception:
+            pass
+        client, db, NO_DATABASE = None, None, True
         return
     for kind in ['base','drawers','corner']:
         await db.products.update_one({'id':f'euro-{kind}'},{'$set':{'id':f'euro-{kind}','name':f'Euro 32 / {kind}','kind':kind,'width':914.4 if kind=='corner' else 762,'parts':make_parts(914.4 if kind=='corner' else 762,kind),'standard':'Original generic frameless Euro/32 mm template','sources':['https://publications.blum.com/2024/catalogue/en/153/'],'revision':'1.0'}},upsert=True)
