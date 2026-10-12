@@ -17,7 +17,12 @@ export function LayoutWidget(){
   // `open` above is the More disclosure inside the widget; `panel` is the whole widget
   // being put away. Dismissing it leaves a pill in the same corner, so arranging can be
   // got out of and back into without leaving arrange mode.
-  const panel=usePanel();
+  //
+  // It starts put away: entering arrange mode shows one labelled "Layout" pill, and the
+  // card appears when that pill is clicked. The card is anchored over the model and, in a
+  // view narrower than a desktop window, it was both the thing in the way and the thing
+  // that could not be reached — a click to summon it fixes both.
+  const panel=usePanel(false);
   const cabinets=scene?scene.cabinets:[];
   const current=cabinets.find(c=>c.id===selected[0])||null;
   const group=groupFor(config.groups,selected[0]);

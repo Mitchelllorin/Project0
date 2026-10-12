@@ -279,3 +279,20 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 .connection-error{background:#4b3026;background:color-mix(in srgb,#4b3026 62%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .connection-error .error-dismiss{color:#ffca8c;opacity:.85}
 .connection-error .error-dismiss:hover{background:#ffffff24}
+
+/* ---------------------------------------------------------------------------
+   Floating cards are anchored to a corner of the 3D area, and they can end up
+   taller than that area. A one-row bar wraps into a stack as the view gets
+   narrow, and because the card is pinned to the bottom (bottom:95px) it grows
+   *upward*, past the top edge of .viewport-wrap, which is overflow:hidden. The
+   controls you came for were the ones clipped off screen.
+   Cap every floating card against its own container and scroll inside it, so no
+   panel can ever render part of itself out of reach. bottom:95px + this cap
+   always leaves at least 20px of card visible above the camera dock.
+   --------------------------------------------------------------------------- */
+.layout-widget,.explode-controls{max-height:calc(100% - 115px);overflow-y:auto;overscroll-behavior:contain}
+
+/* Narrow enough that the one-row bar wraps into a column: give the card the full
+   width of the 3D area instead, so it stays a bar and stays short. The collapsed
+   pill is excluded — it must keep hugging its own label, not stretch edge to edge. */
+@media(max-width:900px){.layout-widget:not(.is-collapsed){left:9px;right:9px;max-width:none}}

@@ -1,7 +1,8 @@
-// Two things matter here and they are both about not getting in the way: the
-// widget must not cover the model while you arrange it, and the layout workflow
-// must still be complete. So the first test asserts what is deliberately NOT on
-// screen, the second that one click brings all of it back.
+// Three things matter here and they are all about not getting in the way: the
+// widget must not cover the model while you arrange it, it must not be on the
+// model until you ask for it, and the layout workflow must still be complete.
+// So the first tests assert what is deliberately NOT on screen, and then that
+// one click brings all of it back.
 import React, {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {LayoutWidget} from './LayoutWidget';
@@ -45,11 +46,14 @@ beforeEach(() => {
   mockStudio = studioWith();
 });
 
-function render() {
+// Most tests drive the summoned card, which is one click behind the pill the
+// widget starts as. `render({summon:false})` is for the tests about the pill.
+function render({summon = true} = {}) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
   act(() => root.render(<LayoutWidget/>));
+  if (summon) act(() => byTestId(container, 'layout-expand').click());
   return container;
 }
 
@@ -57,7 +61,23 @@ const byTestId = (c, id) => c.querySelector(`[data-testid="${id}"]`);
 const openMore = c => act(() => byTestId(c, 'layout-more').click());
 
 describe('LayoutWidget', () => {
-  it('is one row of controls at rest, so it does not cover the model', () => {
+  it('starts as one labelled pill, so nothing sits over the model until it is asked for', () => {
+    const c = render({summon: false});
+    // The card is not on screen at all...
+    expect(byTestId(c, 'layout-widget')).toBeNull();
+    ['layout-bar', 'gizmo-translate', 'layout-merge', 'layout-more', 'done-arranging']
+      .forEach(id => expect(byTestId(c, id)).toBeNull());
+    // ...only the way to summon it, in the same corner it will occupy.
+    const collapsed = byTestId(c, 'layout-widget-collapsed');
+    expect(collapsed.className).toContain('is-collapsed');
+    expect(byTestId(c, 'layout-expand').textContent).toContain('Layout');
+
+    act(() => byTestId(c, 'layout-expand').click());
+    expect(byTestId(c, 'layout-bar')).not.toBeNull();
+    expect(byTestId(c, 'layout-widget-collapsed')).toBeNull();
+  });
+
+  it('is one row of controls once summoned, so it does not cover the model', () => {
     const c = render();
     expect(byTestId(c, 'layout-bar')).not.toBeNull();
     // Nothing heavy is in the DOM until it is asked for.
