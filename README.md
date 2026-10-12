@@ -113,7 +113,7 @@ verification commands and a troubleshooting table. The short version:
 |---|---|
 | Node.js | >= 20 (declared in `frontend/package.json`) |
 | Yarn | 1.22 (`corepack enable`) |
-| Python | 3.11–3.12 |
+| Python | 3.11 or newer |
 | MongoDB | 6 or 7 — Docker (recommended), a local server, or any reachable `mongodb://` URL |
 
 `backend/.env` is required: `server.py` reads `MONGO_URL`, `DB_NAME` and `CORS_ORIGINS` at

@@ -13,7 +13,7 @@ the app talks only to itself.
 |---|---|---|
 | Node.js | **20 or newer** | Declared in `frontend/package.json` (`engines`). 24 is what this repo is developed on. |
 | Yarn | **1.22** | Pinned in `packageManager`; `corepack enable` installs it for you. `npm install` also works. |
-| Python | **3.11 – 3.12** | 3.12 is used here. |
+| Python | **3.11 or newer** | 3.12 is used here; the pinned dependencies install and pass on 3.13 and 3.14 too. |
 | MongoDB | **6 or 7** | Docker (easiest), a local server, or any reachable `mongodb://` URL — including a hosted one. |
 
 ## Get the code
