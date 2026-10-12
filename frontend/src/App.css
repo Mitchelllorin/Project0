@@ -134,7 +134,6 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
   .view-dock{bottom:calc(12px + env(safe-area-inset-bottom,0px));height:38px}
   .explode-controls{bottom:calc(56px + env(safe-area-inset-bottom,0px));padding:9px 10px 8px}
   .explode-title{margin-bottom:8px}
-  .layout-widget{max-height:58%;overflow-y:auto;overscroll-behavior:contain}
 }
 /* Narrow AND short: a phone in landscape or a small tablet split-screen. Only
    here do we drop decorative copy, because every pixel goes to the 3D scene. */
@@ -281,16 +280,37 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 .connection-error .error-dismiss:hover{background:#ffffff24}
 
 /* ---------------------------------------------------------------------------
-   Floating cards are anchored to a corner of the 3D area, and they can end up
-   taller than that area. A one-row bar wraps into a stack as the view gets
-   narrow, and because the card is pinned to the bottom (bottom:95px) it grows
-   *upward*, past the top edge of .viewport-wrap, which is overflow:hidden. The
-   controls you came for were the ones clipped off screen.
-   Cap every floating card against its own container and scroll inside it, so no
-   panel can ever render part of itself out of reach. bottom:95px + this cap
-   always leaves at least 20px of card visible above the camera dock.
+   Floating cards are anchored inside the 3D area, and they can end up taller
+   than it. The layout card is pinned to the bottom (bottom:95px) and grows
+   *upward* as the view gets narrow and its one row wraps into a stack; left
+   unbounded it rises past the top edge of .viewport-wrap, which is
+   overflow:hidden, and the controls you came for get clipped off screen.
+
+   Two caps, and the card obeys the tighter one:
+
+   `calc(100% - 115px)` keeps the whole card inside the 3D area — bottom:95px
+   plus this leaves it clear of the camera dock.
+
+   `max(80px, calc(50% - 111px))` keeps the *middle of the 3D area* to the
+   model. The card is pinned 95px above the bottom edge, so a cap of half the
+   container height minus that offset and minus a 16px margin holds the card's
+   top edge below the vertical centre with room to spare — the centre is where a
+   cabinet gets dragged. Opening 'More' at 1024x640 used to put a 298px card
+   across the middle of the kitchen; that is the number this one is for. It also
+   strictly dominates the 58% cap it replaces at every height, so that rule is
+   gone rather than left to shadow this one.
+
+   The 80px floor is the bar itself (51px) plus its padding, so the card is
+   never reduced to something that cannot be used. On a 3D area shorter than
+   about 380px — a phone held sideways — the floor wins and the card does reach
+   the centre, because there is no height at which it could do otherwise.
+
+   The extras are the part that grows, so they are the part that scrolls: the
+   bar holding Move / Rotate / Merge / Done stays on screen underneath them.
    --------------------------------------------------------------------------- */
-.layout-widget,.explode-controls{max-height:calc(100% - 115px);overflow-y:auto;overscroll-behavior:contain}
+.explode-controls{max-height:calc(100% - 115px);overflow-y:auto;overscroll-behavior:contain}
+.layout-widget:not(.is-collapsed){display:flex;flex-direction:column;max-height:min(calc(100% - 115px),max(80px,calc(50% - 111px)))}
+.layout-widget:not(.is-collapsed) .layout-extra{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 
 /* Narrow enough that the one-row bar wraps into a column: give the card the full
    width of the 3D area instead, so it stays a bar and stays short. The collapsed
