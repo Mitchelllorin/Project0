@@ -43,7 +43,7 @@ check() {
     if docker info >/dev/null 2>&1; then echo "docker    $(first_line docker) — daemon running"
     else echo "docker    installed, but the daemon is NOT running"; fi
   elif have mongod; then echo "mongod    $(first_line mongod) — start it yourself on 127.0.0.1:$MONGO_PORT"
-  else echo "mongo     neither docker nor mongod found — one of them is required"; missing=1; fi
+  else echo "mongo     neither docker nor mongod found — optional: the studio runs, saving is off"; fi
 
   echo
   echo "== this checkout =="
@@ -113,8 +113,9 @@ start() {
     echo "==> MongoDB (docker compose)"
     docker compose up -d mongo
   else
-    echo "!! Docker is unavailable — start MongoDB yourself on 127.0.0.1:$MONGO_PORT"
-    echo "   (DEVELOPMENT.md § 1; the app will report a Mongo connection error until it is up)"
+    echo "!! No Docker — starting without a database. The studio renders; saving is disabled."
+    echo "   Start MongoDB yourself on 127.0.0.1:$MONGO_PORT, or point MONGO_URL at a hosted"
+    echo "   one (DEVELOPMENT.md § 1), to turn saving on."
   fi
 
   echo "==> backend  http://localhost:$BACKEND_PORT"

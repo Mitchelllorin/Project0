@@ -18,14 +18,24 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s: %(messag
 logger = logging.getLogger('kitchen-studio')
 
 load_dotenv(Path(__file__).parent / '.env')
-client=AsyncIOMotorClient(os.environ['MONGO_URL'])
-db=client[os.environ['DB_NAME']]
+# MongoDB is optional. Everything the studio renders — catalog, layout, quote, dimensions —
+# is computed from the JSON catalogs in ./catalog, so a database is needed only to save a
+# design and read it back. Set MONGO_URL to enable that (local mongod or a hosted one);
+# leave it unset and the studio still runs, with the save endpoints answering 503.
+MONGO_URL=os.environ.get('MONGO_URL','').strip()
+client=AsyncIOMotorClient(MONGO_URL) if MONGO_URL else None
+db=client[os.environ.get('DB_NAME','kitchen_studio')] if client is not None else None
+NO_DATABASE=db is None
 app=FastAPI(title='Kitchen Studio Assembly API',version='1.0.0')
-app.add_middleware(CORSMiddleware,allow_origins=os.environ['CORS_ORIGINS'].split(','),allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
+app.add_middleware(CORSMiddleware,allow_origins=os.environ.get('CORS_ORIGINS','http://localhost:3000,http://127.0.0.1:3000').split(','),allow_credentials=False,allow_methods=['*'],allow_headers=['*'])
 api=APIRouter(prefix='/api')
 
 @app.on_event('startup')
 async def seed_catalog():
+    if NO_DATABASE:
+        logger.warning('No MONGO_URL set — running without a database. The studio renders and prices '
+                       'normally; saving a design is disabled.')
+        return
     for kind in ['base','drawers','corner']:
         await db.products.update_one({'id':f'euro-{kind}'},{'$set':{'id':f'euro-{kind}','name':f'Euro 32 / {kind}','kind':kind,'width':914.4 if kind=='corner' else 762,'parts':make_parts(914.4 if kind=='corner' else 762,kind),'standard':'Original generic frameless Euro/32 mm template','sources':['https://publications.blum.com/2024/catalogue/en/153/'],'revision':'1.0'}},upsert=True)
 
@@ -52,8 +62,15 @@ async def deployment_config():
 async def catalogs():
     return available_catalogs()
 
+def require_database():
+    """The one capability a deployment without MONGO_URL loses."""
+    if NO_DATABASE:
+        raise HTTPException(503,'This deployment has no database, so designs cannot be saved or listed. '
+                                'Set MONGO_URL to enable it; everything else works without one.')
+
 @api.get('/catalog',response_model=list[CatalogItem])
 async def catalog():
+    require_database()
     return await db.products.find({}, {'_id':0,'parts':0}).to_list(20)
 
 def current_dealer(x_dealer_code:str|None=Header(default=None)):
@@ -91,6 +108,7 @@ async def configure(config:Configuration,dealer=Depends(current_dealer)):
 
 @api.get('/assemblies/{product_id}',response_model=ProductAssembly)
 async def assembly(product_id:str):
+    require_database()
     result=await db.products.find_one({'id':product_id},{'_id':0})
     if not result: raise HTTPException(404,'Assembly not found')
     return result
@@ -113,6 +131,7 @@ async def group_preview(request:GroupRequest):
 async def save_project(project_id:str,project:Project):
     try: UUID(project_id)
     except ValueError: raise HTTPException(400,'Invalid project identifier')
+    require_database()
     if project.id!=project_id: raise HTTPException(400,'Project identifier mismatch')
     project.updated_at=datetime.now(timezone.utc).isoformat()
     doc=project.model_dump()
@@ -121,6 +140,7 @@ async def save_project(project_id:str,project:Project):
 
 @api.get('/projects/{project_id}',response_model=Project)
 async def get_project(project_id:str):
+    require_database()
     doc=await db.projects.find_one({'id':project_id},{'_id':0})
     if not doc: raise HTTPException(404,'Project not found')
     return doc
@@ -128,4 +148,5 @@ async def get_project(project_id:str):
 app.include_router(api)
 
 @app.on_event('shutdown')
-async def shutdown(): client.close()
+async def shutdown():
+    if client is not None: client.close()

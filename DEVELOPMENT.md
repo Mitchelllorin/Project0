@@ -4,8 +4,9 @@ Everything here is about running the studio on **your own machine**. For handing
 finished instance to a client, see [DEPLOY.md](DEPLOY.md); for the catalogue format,
 [backend/CATALOG.md](backend/CATALOG.md).
 
-You need **no accounts, no API keys and no cloud services** — MongoDB runs locally and
-the app talks only to itself.
+You need **no accounts, no API keys and no cloud services** — and no database. The studio
+runs, renders and prices with nothing but Node and Python; adding MongoDB is what turns on
+*saving* a design (§ 1).
 
 ## What you need
 
@@ -14,7 +15,7 @@ the app talks only to itself.
 | Node.js | **20 or newer** | Declared in `frontend/package.json` (`engines`). 24 is what this repo is developed on. |
 | Yarn | **1.22** | Pinned in `packageManager`; `corepack enable` installs it for you. `npm install` also works. |
 | Python | **3.11 or newer** | 3.12 is used here; the pinned dependencies install and pass on 3.13 and 3.14 too. |
-| MongoDB | **6 or 7** | Docker (easiest), a local server, or any reachable `mongodb://` URL — including a hosted one. |
+| MongoDB | **6, 7 or 8** | **Optional.** Needed only to save and reload a design. Docker (easiest), a local server, or any reachable `mongodb://` URL — including a hosted one. |
 
 ## Get the code
 
@@ -25,7 +26,16 @@ cd kitchen-studio
 
 Confirm what changed around you any time with `./dev.sh check` (below).
 
-## 1. MongoDB
+## 1. MongoDB — optional, and only for saving
+
+Everything the studio draws or totals — catalog, layout, parts, quote, dimensions — is
+computed from the JSON catalogs in `backend/catalog/`. `POST /api/configure` needs no
+database, so you can skip this section and still run and demo the studio.
+
+What a database buys you is persistence: `PUT/GET /api/projects/<id>`, saving a design and
+loading it back. With no `MONGO_URL` the API starts anyway, logs one line saying so, and
+answers those two routes with a 503. The studio reports "Could not save" and keeps the
+design in the browser, exactly as it already does when a save fails for any other reason.
 
 Docker, one command:
 
@@ -42,7 +52,7 @@ running as a service. Any of these gives you `mongodb://127.0.0.1:27017`.
 
 ```bash
 cd backend
-cp .env.example .env                      # required: server.py reads MONGO_URL, DB_NAME, CORS_ORIGINS at import
+cp .env.example .env                      # optional: DB_NAME and CORS_ORIGINS default; MONGO_URL turns on saving
 python3 -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
@@ -78,8 +88,25 @@ changing `frontend/.env`.
 ./dev.sh install  # create the .env files and install both dependency sets, start nothing
 ```
 
-`dev.sh` is bash — on Windows use WSL2, or copy the commands above into two PowerShell
-windows. `check` changes nothing; it is the fastest way to find out why a step failed.
+On Windows the same script exists as PowerShell — **`dev.ps1`**, same three commands, and it
+starts the API and the studio in their own two windows:
+
+```powershell
+.\dev.ps1            # install anything missing, then start both servers
+.\dev.ps1 check      # what this machine has, what is missing, what the ports are doing
+.\dev.ps1 install    # dependencies only, start nothing
+```
+
+A checkout that arrived as a downloaded ZIP is marked "from the internet" by Windows, and
+PowerShell refuses to run a script like that. If you see *"running scripts is disabled on
+this system"*, bypass the policy for this one command — it changes nothing on the machine:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\dev.ps1
+```
+
+Neither script is a prerequisite for anything; both do the same steps as § 2 and § 3 by hand.
+`check` changes nothing; it is the fastest way to find out why a step failed.
 
 ## Prove your setup works
 
@@ -143,7 +170,7 @@ DEPLOY.md · DEVELOPMENT.md · README.md
 
 | Symptom | Cause and fix |
 |---|---|
-| Backend exits immediately | `backend/.env` is missing. `cp .env.example .env`. |
+| Backend exits immediately | It used to mean a missing `backend/.env`; those values now default. Read the traceback: the usual causes now are port 8001 already taken, or a typo in the file you just edited. |
 | `No matching distribution found for emergentintegrations` | You installed the wrong file. Use `requirements-dev.txt`; the published `requirements.txt` was already trimmed to what the app imports. |
 | *"The studio could not connect"* in the UI | The API is down, or `frontend/.env` points somewhere else. Check `REACT_APP_BACKEND_URL`, that the API is on 8001, and that `CORS_ORIGINS` includes `http://localhost:3000`. |
 | pytest fails with connection errors | Export `REACT_APP_BACKEND_URL=http://localhost:8001` — the suite drives a live server. |
@@ -154,6 +181,7 @@ DEPLOY.md · DEVELOPMENT.md · README.md
 | The build or dev server is killed (exit 137) | Out of RAM. The separate TypeScript checker worker is the expensive part: `DISABLE_TS_CHECKER=true yarn build` (or `yarn start`), and cap the heap with `NODE_OPTIONS=--max-old-space-size=1024`. Types are still checked with `npx tsc --noEmit`. |
 | Port already in use | `lsof -i :3000` / `:8001` / `:27017`, or start on another port and update `.env`. |
 | Mongo connection refused | `docker compose up -d mongo`, or start your own `mongod`. |
+| Saving says it failed, and the API logs `503` | No database on this deployment. Set `MONGO_URL` in `backend/.env` (§ 1); everything else works without one, and the design is still in the browser. |
 
 ## Continuous integration
 

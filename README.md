@@ -11,6 +11,26 @@ frontend/   React studio UI (port 3000)
 backend/    FastAPI assembly/quote API (port 8001)
 ```
 
+## Just want to run it?
+
+Node 20+ and Python 3.11+ ([DEVELOPMENT.md](DEVELOPMENT.md) lists the versions), then one
+command, from the checkout:
+
+```powershell
+.\dev.ps1            # Windows
+```
+```bash
+./dev.sh             # macOS / Linux
+```
+
+Then open <http://localhost:3000>. **No database is required to run the studio** — the
+catalog, layout, parts, quote and dimensions are computed from the JSON catalogs in
+`backend/catalog/`. A database is what turns on *saving* a design; add one (§ 1 of
+DEVELOPMENT.md, or point `MONGO_URL` at a hosted instance) when you want that.
+
+Both scripts do the same work as the manual steps, and both have a `check` subcommand that
+reports what this machine is missing without changing anything.
+
 ## Catalogs — adding a manufacturer
 
 Catalog **data** (dimensions, thicknesses, joinery, hardware, edge banding,
