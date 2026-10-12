@@ -18,13 +18,16 @@ have() { command -v "$1" >/dev/null 2>&1; }
 first_line() { "$1" --version 2>/dev/null | head -1; }
 port_busy() { { ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null || true; } | grep -qE "[:.]$1[[:space:]]"; }
 
-# Yarn 1.22 is declared in packageManager. Prefer a real yarn; otherwise run that same
-# version through corepack, which needs no shims on PATH — 'corepack enable' writes into
-# the Node installation and fails on a locked-down machine (it does here).
+# Yarn 1.22 is declared in packageManager. Prefer a real yarn; then corepack, which is where
+# Node 20-24 provided it — 'corepack enable' writes into the Node installation and fails on a
+# locked-down machine (it does here), so call it directly instead. Then the same version
+# through npx, because Node 25 stopped shipping corepack altogether and npm is the one thing
+# every Node install still has.
 YARN=""
 resolve_yarn() {
   if have yarn; then YARN=yarn
   elif have corepack; then YARN="corepack yarn"
+  elif have npm; then YARN="npx --yes yarn@1.22.22"
   else YARN=""; fi
   [ -n "$YARN" ]
 }
@@ -35,8 +38,10 @@ check() {
   echo "== toolchain =="
   if have node; then echo "node      $(first_line node)   (needs 20+)"
   else echo "node      MISSING — install Node 20 or newer"; missing=1; fi
-  if resolve_yarn; then echo "yarn      $($YARN --version 2>/dev/null) (via $YARN)"
-  else echo "yarn      MISSING — install Node 20+, which ships corepack"; missing=1; fi
+  if resolve_yarn; then
+    if [ "$YARN" = "npx --yes yarn@1.22.22" ]; then echo "yarn      none installed (Node 25 no longer ships corepack) — the pinned 1.22.22 runs through npx"
+    else echo "yarn      $($YARN --version 2>/dev/null) (via $YARN)"; fi
+  else echo "yarn      MISSING — install Node 20 or newer, which includes npm"; missing=1; fi
   if have python3; then echo "python3   $(first_line python3)   (needs 3.11 or newer)"
   else echo "python3   MISSING — install Python 3.11 or newer"; missing=1; fi
   if have docker; then
@@ -79,7 +84,7 @@ check() {
 install_frontend() {
   if [ -d node_modules ]; then return 0; fi
   if ! resolve_yarn; then
-    echo "!! neither yarn nor corepack is available — install Node 20 or newer" >&2
+    echo "!! neither yarn, corepack nor npm is available — install Node 20 or newer" >&2
     return 1
   fi
   if $YARN install --frozen-lockfile; then return 0; fi

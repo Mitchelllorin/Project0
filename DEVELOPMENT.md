@@ -13,7 +13,7 @@ runs, renders and prices with nothing but Node and Python; adding MongoDB is wha
 | Tool | Version | Notes |
 |---|---|---|
 | Node.js | **20 or newer** | Declared in `frontend/package.json` (`engines`). 24 is what this repo is developed on. |
-| Yarn | **1.22** | Pinned in `packageManager`; `corepack enable` installs it for you. `npm install` also works. |
+| Yarn | **1.22** | Pinned in `packageManager`. Node 20–24 ship `corepack`, which provides it; **Node 25 no longer does**, so there the scripts run the pinned 1.22.22 through `npx`, or you install it once with `npm i -g yarn@1.22.22`. Plain `npm install` also works. |
 | Python | **3.11 or newer** | 3.12 is used here; the pinned dependencies install and pass on 3.13 and 3.14 too. |
 | MongoDB | **6, 7 or 8** | **Optional.** Needed only to save and reload a design. Docker (easiest), a local server, or any reachable `mongodb://` URL — including a hosted one. |
 
@@ -176,7 +176,7 @@ DEPLOY.md · DEVELOPMENT.md · README.md
 | pytest fails with connection errors | Export `REACT_APP_BACKEND_URL=http://localhost:8001` — the suite drives a live server. |
 | `Unknown catalog 'x'` (400) | The name must be a JSON file in `backend/catalog/`; `curl localhost:8001/api/catalogs` lists them and says why any is invalid. |
 | A catalogue edit has no effect | Catalogues are cached in the process — restart the API. |
-| `yarn: command not found` | `corepack enable`, or `npm install -g yarn@1.22.22`. |
+| `yarn: command not found` | `corepack enable` on Node 20–24. On Node 25 corepack was removed from the distribution: use `npm install -g yarn@1.22.22`, or let `dev.sh`/`dev.ps1` run it through `npx` (which is what they do). |
 | Install fails fetching `@emergentbase/*` from `assets.emergent.sh` | Those two are dev-server editor tooling (a branded error overlay and a visual-edit bridge) fetched from a vendor CDN, and nothing in a production build uses them. `./dev.sh install` retries without them automatically and puts `package.json` and `yarn.lock` back afterwards. By hand: drop both from `frontend/package.json`, install, then restore the file — the studio builds and runs without them, printing two warnings, with the overlay off. Note that declaring them `optionalDependencies`, or installing with `--ignore-optional`, does **not** help: yarn v1 still exits non-zero when a URL dependency is unreachable (both measured). |
 | The build or dev server is killed (exit 137) | Out of RAM. The separate TypeScript checker worker is the expensive part: `DISABLE_TS_CHECKER=true yarn build` (or `yarn start`), and cap the heap with `NODE_OPTIONS=--max-old-space-size=1024`. Types are still checked with `npx tsc --noEmit`. |
 | Port already in use | `lsof -i :3000` / `:8001` / `:27017`, or start on another port and update `.env`. |

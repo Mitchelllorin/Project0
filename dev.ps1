@@ -29,16 +29,20 @@ $MongoPort = 27017
 function Have([string]$exe) { [bool](Get-Command $exe -ErrorAction SilentlyContinue) }
 
 function Get-YarnCommand {
-  # Yarn 1.22 is what packageManager declares. Prefer a real yarn; otherwise run that same
-  # version through corepack, which needs no shims on PATH.
+  # Yarn 1.22 is what packageManager declares. Prefer a real yarn; then corepack, which is
+  # where Node 20-24 provided it; then the same version through npx, because Node 25 stopped
+  # shipping corepack altogether and npm is the one thing every Node install still has.
   if (Have 'yarn') { return 'yarn' }
   if (Have 'corepack') { return 'corepack yarn' }
+  if (Have 'npm') { return 'npx --yes yarn@1.22.22' }
   return $null
 }
 
 function Invoke-Yarn {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest)
-  if (Have 'yarn') { & yarn @Rest } else { & corepack yarn @Rest }
+  if (Have 'yarn') { & yarn @Rest }
+  elseif (Have 'corepack') { & corepack yarn @Rest }
+  else { & npx --yes yarn@1.22.22 @Rest }
 }
 
 function Resolve-Python {
@@ -71,8 +75,12 @@ function Show-Check {
   if (Have 'node') { Write-Host ("node      " + (& node --version) + "   (needs 20 or newer)") }
   else { Write-Host 'node      MISSING - install Node 20 or newer from nodejs.org' -ForegroundColor Red; $missing++ }
   $yarn = Get-YarnCommand
-  if ($yarn) { Write-Host ("yarn      " + (Invoke-Yarn --version) + "   (via $yarn)") }
-  else { Write-Host 'yarn      MISSING - install Node 20 or newer, which ships corepack' -ForegroundColor Red; $missing++ }
+  if (-not $yarn) { Write-Host 'yarn      MISSING - install Node 20 or newer from nodejs.org' -ForegroundColor Red; $missing++ }
+  elseif ($yarn -like 'npx*') {
+    # Node 25 dropped corepack from the distribution; this is the fallback that matters now.
+    Write-Host 'yarn      none installed (Node 25 no longer ships corepack) - the pinned 1.22.22 runs through npx'
+  }
+  else { Write-Host ("yarn      " + (Invoke-Yarn --version) + "   (via $yarn)") }
   if (Resolve-Python) { Write-Host ("python    " + (Invoke-Python --version) + "   (needs 3.11 or newer)") }
   else { Write-Host 'python    MISSING - install Python 3.11 or newer from python.org' -ForegroundColor Red; $missing++ }
 
@@ -135,7 +143,8 @@ function Install-Frontend {
   Push-Location (Join-Path $root 'frontend')
   try {
     if (Test-Path 'node_modules') { return }
-    if (-not (Get-YarnCommand)) { throw 'Neither yarn nor corepack is available. Install Node 20 or newer.' }
+    # yarn, or corepack's yarn (Node 20-24), or the pinned version through npx (Node 25+).
+    if (-not (Get-YarnCommand)) { throw 'Neither yarn, corepack nor npm is available. Install Node 20 or newer from nodejs.org.' }
     if (-not (Test-Path '.env')) { Copy-Item '.env.example' '.env' }
 
     Invoke-Yarn install --frozen-lockfile
