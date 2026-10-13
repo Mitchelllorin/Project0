@@ -1,4 +1,4 @@
-// The layout card hangs 95px above the bottom of the 3D area and grows *upward*
+// The layout card hangs 46px above the bottom of the 3D area and grows *upward*
 // when the 'More' disclosure opens. Left unbounded it rises past the vertical
 // centre and stands on the model — a 298px card over the middle of the kitchen
 // at 1024x640, which is exactly where a cabinet gets dragged.
@@ -13,8 +13,11 @@ import path from 'path';
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'App.css'), 'utf8');
 
-const CARD_BOTTOM = 95; // .layout-widget{bottom:95px}
-const DOCK_CLEARANCE = 115; // bottom:95px + the camera dock's own 31px + 47px
+const CARD_BOTTOM = 46; // .layout-widget{bottom:46px}
+// bottom:46px plus the 27px status bar and a gap: the card never reaches the
+// bottom edge of the window either. The camera dock used to share that edge and
+// is on the right now, so clearing the dock is no longer part of this.
+const EDGE_CLEARANCE = 98;
 const CENTRE_MARGIN = 16; // how far below the middle of the 3D area the card starts
 const USABLE_CARD = 80; // the bar alone is 51px plus its padding: never go below this
 
@@ -97,9 +100,9 @@ describe('the open layout card', () => {
     }
   });
 
-  test.each(VIEW_HEIGHTS)('stays inside a %ipx 3D area, clear of the camera dock', (container) => {
+  test.each(VIEW_HEIGHTS)('stays inside a %ipx 3D area, clear of the bottom edge', (container) => {
     for (const cap of caps) {
-      expect(height(cap, container)).toBeLessThanOrEqual(container - DOCK_CLEARANCE);
+      expect(height(cap, container)).toBeLessThanOrEqual(container - EDGE_CLEARANCE);
     }
   });
 

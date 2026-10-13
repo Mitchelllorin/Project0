@@ -289,19 +289,19 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 .connection-error .error-dismiss:hover{background:#ffffff24}
 
 /* ---------------------------------------------------------------------------
-   Floating cards are anchored inside the 3D area, and they can end up taller
-   than it. The layout card is pinned to the bottom (bottom:95px) and grows
+   Floating cards are anchored to the bottom edge, and they can end up taller
+   than it. The layout card is pinned to the bottom (bottom:46px) and grows
    *upward* as the view gets narrow and its one row wraps into a stack; left
    unbounded it rises past the top edge of .viewport-wrap, which is
    overflow:hidden, and the controls you came for get clipped off screen.
 
    Two caps, and the card obeys the tighter one:
 
-   `calc(100% - 115px)` keeps the whole card inside the 3D area — bottom:95px
-   plus this leaves it clear of the camera dock.
+   `calc(100% - 98px)` keeps the whole card inside the 3D area — bottom:46px
+   plus the 27px status bar and a gap, so it rests above the bottom edge.
 
-   `max(80px, calc(50% - 111px))` keeps the *middle of the 3D area* to the
-   model. The card is pinned 95px above the bottom edge, so a cap of half the
+   `max(80px, calc(50% - 62px))` keeps the *middle of the 3D area* to the
+   model. The card is pinned 46px above the bottom edge, so a cap of half the
    container height minus that offset and minus a 16px margin holds the card's
    top edge below the vertical centre with room to spare — the centre is where a
    cabinet gets dragged. Opening 'More' at 1024x640 used to put a 298px card
@@ -317,11 +317,265 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
    The extras are the part that grows, so they are the part that scrolls: the
    bar holding Move / Rotate / Merge / Done stays on screen underneath them.
    --------------------------------------------------------------------------- */
-.explode-controls{max-height:calc(100% - 115px);overflow-y:auto;overscroll-behavior:contain}
-.layout-widget:not(.is-collapsed){display:flex;flex-direction:column;max-height:min(calc(100% - 115px),max(80px,calc(50% - 111px)))}
+.explode-controls{max-height:calc(100% - 98px);overflow-y:auto;overscroll-behavior:contain}
+.layout-widget:not(.is-collapsed){display:flex;flex-direction:column;max-height:min(calc(100% - 98px),max(80px,calc(50% - 62px)))}
 .layout-widget:not(.is-collapsed) .layout-extra{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 
 /* Narrow enough that the one-row bar wraps into a column: give the card the full
    width of the 3D area instead, so it stays a bar and stays short. The collapsed
    pill is excluded — it must keep hugging its own label, not stretch edge to edge. */
 @media(max-width:900px){.layout-widget:not(.is-collapsed){left:9px;right:9px;max-width:none}}
+
+/* ==========================================================================
+   THE PERIMETER.
+
+   The model is the product, so it gets the window. `.viewport-wrap` is lifted
+   out of the flex row and pinned to fill `.workspace`, and every control that
+   used to be a glass card beside or over it is now type drawn at the edge of
+   the screen — left, right, top, bottom. Nothing is anchored to the middle, and
+   the centre of the window is the kitchen, always.
+
+   Why type instead of glass. A translucent card is still a card: it has an
+   edge, a radius and a blur, and it covers the corner of the room it happens to
+   be sitting on. Type has none of that. What it needs instead is contrast, so
+   every label carries a hard drop shadow and is drawn in the ink / dim / faint
+   triple below. The shadow is what keeps the words readable over a bright
+   daylight floor as well as a dark evening one, without a background doing it.
+
+   The overlays read three custom properties — --rail-w, --left-w, --right-w —
+   so they clear the rail and the two side columns at every breakpoint without
+   repeating the arithmetic. Those three are redeclared once each in the media
+   blocks below and nowhere else.
+   ========================================================================== */
+
+:root{--rail-w:61px;--left-w:278px;--right-w:285px;--edge-gap:31px;--edge-ink:#ffffff;--edge-dim:#efede4;--edge-faint:#cfd4c9;--edge-shadow:0 1px 2px #000000f2,0 1px 6px #000000d9,0 0 16px #000000ab;--edge-rule:#ffffff2b}
+@media(max-width:1250px){:root{--rail-w:53px;--left-w:244px;--right-w:255px;--edge-gap:22px}}
+@media(max-width:1000px){:root{--right-w:0px}}
+@media(max-width:700px){:root{--rail-w:44px;--left-w:0px;--edge-gap:18px}}
+
+/* --- The model owns the window ------------------------------------------ */
+.workspace{display:block;position:relative}
+.viewport-wrap{position:absolute;inset:0;z-index:0;background:none}
+.studio-loading,.document-page{position:absolute;inset:0}
+
+/* --- Everything else is pinned to an edge ------------------------------- */
+.tool-rail,.left-panel,.right-panel{position:absolute;top:0;bottom:0;background:none;border:0;box-shadow:none;color:var(--edge-ink);text-shadow:var(--edge-shadow)}
+.tool-rail{left:0}
+.left-panel{left:var(--rail-w)}
+.right-panel{right:0}
+@media(max-width:700px){.left-panel{left:calc(var(--rail-w) + env(safe-area-inset-left,0px))}}
+
+/* Nothing but type. Every panel background, rule, hairline, blur and radius
+   that was separating one group of controls from the next is gone; spacing and
+   the accent colour do that work now. Scoped to the two side columns and the
+   strips drawn over the model — dialogs are their own surface and keep theirs. */
+.left-panel,.right-panel,.configurator section,.panel-title,.panel-footnote,
+.inspector-body,.assembly-tree,.part-search,.part-categories,.part-list,
+.quote-peek,.cabinet-glyph,.standards-note,.layout-widget,.explode-controls,
+.view-dock,.viewport-top-tools button,.panel-pill.panel-pill,
+.layout-readout,.arrange-segment{
+  background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+/* The two columns still scroll — there is more here than fits — but their
+   scrollbars are the one piece of chrome that reads as a panel edge, so they
+   are hidden. The wheel, the trackpad and the keyboard all still move them. */
+.left-panel,.right-panel,.inspector-body,.part-list{scrollbar-width:none}
+.left-panel::-webkit-scrollbar,.right-panel::-webkit-scrollbar,.inspector-body::-webkit-scrollbar,.part-list::-webkit-scrollbar{display:none}
+
+/* --- The rail ----------------------------------------------------------- */
+.tool-rail button{color:var(--edge-faint);border-radius:0}
+.tool-rail button:hover{background:none;color:var(--edge-ink)}
+.tool-rail button.active{background:none;color:var(--studio-accent)}
+.tool-rail button.active:before{background:var(--studio-accent)}
+.rail-divider{background:var(--edge-rule)}
+.studio-monogram{color:var(--edge-faint);border-color:var(--edge-rule)}
+
+/* --- The left column ---------------------------------------------------- */
+.panel-title{height:auto;padding:22px 21px 12px}
+.panel-title h2{color:var(--edge-ink);font-size:19px}
+.panel-title>svg{color:var(--edge-faint)}
+.overline{color:var(--studio-accent)}
+.configurator section{padding:15px 21px}
+.section-heading{margin-bottom:11px}
+.section-heading h2{color:var(--edge-ink);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.16em;text-transform:uppercase}
+.section-heading>span{color:var(--edge-faint)}
+.panel-footnote{color:var(--edge-faint);padding:14px 21px}
+.panel-note{color:var(--edge-faint)}
+.select-wrap select{background:none;border:0;border-bottom:1px solid var(--edge-rule);border-radius:0;color:var(--edge-ink);height:31px;padding:0 24px 0 0;font-size:11px}
+.select-wrap select:focus{border-bottom-color:var(--studio-accent)}
+.select-wrap svg{right:4px;color:var(--edge-faint);top:9px}
+.select-label>span{color:var(--edge-faint)}
+.range-label{color:var(--edge-dim)}
+.finish-readout{color:var(--edge-dim)}
+.finish-readout>span:last-child{color:var(--edge-faint)}
+.small-segment{background:none;border:0;padding:0;gap:12px}
+.small-segment button{color:var(--edge-faint);padding:4px 0;text-transform:uppercase;font-size:8px;letter-spacing:.1em;border-bottom:1px solid transparent;border-radius:0}
+.small-segment button.active{background:none;color:var(--studio-accent);border-bottom-color:var(--studio-accent)}
+.units-toggle{background:none;border:0;padding:0;gap:12px}
+.units-toggle button{color:var(--edge-faint);padding:3px 0;border-bottom:1px solid transparent;border-radius:0}
+.units-toggle button.active{background:none;color:var(--studio-accent);border-bottom-color:var(--studio-accent)}
+.toggle-row{color:var(--edge-dim)}
+.toggle-row small{color:var(--edge-faint)}
+.style-options button,.counter-options button,.hardware-options button,.swatch-option,.finish-readout,.surface-row,.toggle-row{color:var(--edge-dim)}
+/* The accent stays where it marks a choice — the swatch outline, the border of a
+   selected preview — but the *words* of the label go to ink, because a mid-tone
+   accent on a daylight floor is the one colour that vanishes. A selected row
+   already carries its own tick, so the label does not have to shout to be read
+   as chosen. */
+.style-options button.selected,.counter-options button.selected,.hardware-options button.selected,.swatch-option.selected{color:var(--edge-ink)}
+.look-options button{border:0;padding:8px 0;color:var(--edge-dim)}
+.look-options button.selected{background:none;color:var(--edge-ink)}
+.look-meta small{color:var(--edge-faint)}
+.palette-options button{border:0;padding:9px 0}
+.palette-options button.selected{background:none;color:var(--edge-ink)}
+.layout-options button,.rack-options button{border:0;padding:9px 0;color:var(--edge-dim);border-radius:0}
+.layout-options button.selected,.rack-options button.selected{background:none;color:var(--edge-ink)}
+
+/* --- The right column --------------------------------------------------- */
+.inspector-body{padding:18px 21px}
+.cabinet-id-block{margin:14px 0 16px}
+.cabinet-glyph{width:auto;height:auto;color:var(--studio-accent)}
+.cabinet-id-block h3{color:var(--edge-ink)}
+.collection-label{color:var(--edge-faint)}
+.primary-dimension>span{color:var(--edge-faint)}
+.primary-dimension>strong{color:var(--edge-ink)}
+.footprint-row{color:var(--edge-dim)}
+.footprint-row strong{color:var(--edge-ink)}
+.dimension-grid{border-color:var(--edge-rule)}
+.dimension-grid span{color:var(--edge-faint)}
+.dimension-grid strong{color:var(--edge-ink)}
+.component-counts>div{color:var(--edge-dim)}
+.component-counts strong{color:var(--edge-ink)}
+.standards-note>span{color:var(--edge-faint)}
+.standards-note p{color:var(--edge-dim)}
+.quote-peek{padding:13px 21px 18px}
+.quote-peek strong{color:var(--edge-ink)}
+.quote-peek>div>span{color:var(--edge-faint)}
+.quote-peek button{color:var(--edge-dim)}
+.quote-peek button:hover{color:var(--studio-accent)}
+.text-button{color:var(--edge-dim)}
+.text-button:hover{color:var(--studio-accent)}
+.part-title{color:var(--edge-ink)}
+.part-identifier{color:var(--edge-faint)}
+.spec-list>div{border-color:var(--edge-rule)}
+.spec-list dt{color:var(--edge-faint)}
+.spec-list dd{color:var(--edge-ink)}
+.machining-info{border-top-color:var(--edge-rule);color:var(--edge-dim)}
+.assembly-select{padding:16px 18px 6px}
+.part-search{border:0;border-bottom:1px solid var(--edge-rule);border-radius:0;margin:0 18px 12px;color:var(--edge-faint)}
+.part-search input{color:var(--edge-ink)}
+.part-categories{padding:0 18px}
+.part-categories button{color:var(--edge-faint)}
+.part-categories button.active{color:var(--studio-accent)}
+.part-categories button span{background:var(--edge-rule);color:var(--edge-dim)}
+.part-list>button{color:var(--edge-dim);border-radius:0}
+.part-list>button:hover{background:none;color:var(--edge-ink)}
+.part-list>button.active{background:none;color:var(--studio-accent)}
+.part-list small{color:var(--edge-faint)}
+.part-icon{border-color:var(--edge-rule);color:var(--edge-dim);border-radius:0}
+.empty-state{color:var(--edge-faint)}
+
+/* --- Buttons are words -------------------------------------------------- */
+.accent-button,.full-button,.inspect-button,.save-button,.pitch-button,.ghost-button{
+  background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;
+  color:var(--edge-dim)!important;font-weight:400!important;height:auto!important;padding:8px 0!important;
+  text-shadow:var(--edge-shadow)}
+.accent-button:hover,.full-button:hover,.inspect-button:hover,.save-button:hover,.pitch-button:hover,.ghost-button:hover{background:transparent!important;color:var(--edge-ink)!important;filter:none}
+.accent-button{color:var(--studio-accent)!important}
+.icon-button{border-radius:0}
+.icon-button:hover{background:none;color:var(--studio-accent)}
+.icon-button.active{color:var(--studio-accent)}
+/* Dialogs are their own surface, not the studio's perimeter, so they keep a
+   real button — the one place a filled accent still belongs. */
+.studio-dialog .accent-button{background:var(--studio-accent)!important;color:#242719!important;height:36px!important;padding:0 18px!important;border-radius:5px!important;font-weight:500!important}
+
+/* --- Drawn over the model ----------------------------------------------- */
+/* The caption and the corner label clear the *columns*, not just the rail — the
+   left column is the last thing before the model, and text parked beside it has
+   to start where it ends. The right-hand overlays only have to clear the right
+   column, which starts at the rail's mirror of this offset. */
+.viewport-heading{left:calc(var(--rail-w) + var(--left-w) + var(--edge-gap));top:29px}
+.viewport-heading h1{color:var(--edge-ink);text-shadow:var(--edge-shadow)}
+.viewport-heading p,.viewport-hint,.viewport-eyebrow,.render-quality{color:var(--edge-dim);text-shadow:var(--edge-shadow)}
+.viewport-hint{color:var(--edge-faint)}
+.viewport-top-tools{right:calc(var(--right-w) + var(--edge-gap));top:28px;gap:12px}
+.viewport-top-tools button{color:var(--edge-dim);padding:7px 0;text-shadow:var(--edge-shadow)}
+.viewport-top-tools button:hover,.viewport-top-tools button.active{color:var(--studio-accent)}
+.viewport-top-tools .tools-dismiss{color:var(--edge-faint)}
+
+/* The camera dock is on the right edge now, under the view tools, where the
+   hand already is. It used to straddle the bottom centre — the one place on
+   the screen the model has to be — so the kitchen sat behind a toolbar. */
+.view-dock{left:auto;right:calc(var(--right-w) + var(--edge-gap));bottom:46px;transform:none;height:auto;padding:0;gap:10px;color:var(--edge-dim);text-shadow:var(--edge-shadow);max-width:calc(100% - var(--rail-w) - var(--right-w) - var(--edge-gap)*2)}
+.view-dock>button{width:auto;height:auto;padding:6px 0;color:var(--edge-dim)}
+.view-dock>button:hover{color:var(--studio-accent)}
+.view-dock>i{height:15px;margin:0 6px;background:var(--edge-rule)}
+.view-segment{gap:16px}
+.view-segment button{background:none;color:var(--edge-faint);padding:6px 0;text-transform:uppercase;font-size:10px;letter-spacing:.12em;border-bottom:1px solid transparent}
+.view-segment button.active{background:none;color:var(--studio-accent);border-bottom-color:var(--studio-accent)}
+.viewport-corner-label{left:calc(var(--rail-w) + var(--left-w) + 22px);color:var(--edge-faint);text-shadow:var(--edge-shadow)}
+.viewport-bottom-right{right:calc(var(--right-w) + 23px);color:var(--edge-faint);text-shadow:var(--edge-shadow)}
+.viewport-bottom-right strong{color:var(--edge-ink)}
+
+/* --- The layout controls and the explode bar ---------------------------- */
+/* Both strips start where the left column ends, not where the rail does — the
+   column is full of type too, and type over type is the one thing this layout
+   cannot survive. The right column is subtracted from the cap for the same
+   reason. */
+.layout-widget,.explode-controls{left:calc(var(--rail-w) + var(--left-w) + 18px);right:auto;bottom:46px;transform:none;padding:0;color:var(--edge-dim);text-shadow:var(--edge-shadow);max-width:min(620px,calc(100% - var(--rail-w) - var(--left-w) - var(--right-w) - 36px))}
+.layout-widget.is-collapsed,.explode-controls.is-collapsed{padding:0;background:none;border:0}
+/* The card's own cap (above, with the base rule) still holds it below the
+   middle of the window — where a cabinet gets dragged — from its new 46px home
+   on the bottom edge. layoutCardCap.test.js holds it to that arithmetic. */
+.arrange-row{gap:14px}
+.arrange-row button{border:0;border-radius:0;padding:6px 0;color:var(--edge-dim)}
+.arrange-row button:hover{color:var(--studio-accent)}
+.arrange-row button.active{background:none;color:var(--studio-accent);border-color:transparent}
+.arrange-row button.accent{background:none;color:var(--studio-accent)}
+.arrange-segment{gap:14px}
+.arrange-hint{color:var(--edge-faint)}
+.layout-size{color:var(--edge-ink)}
+.layout-select>span,.arrange-width>span,.arrange-kind-label{color:var(--edge-faint)}
+.layout-extra{border-bottom:1px solid var(--edge-rule);padding-bottom:10px;margin-bottom:10px}
+.layout-readout{padding:4px 0;gap:14px}
+.layout-readout span{color:var(--edge-faint)}
+.layout-readout strong{color:var(--edge-ink)}
+.arrange-kind button{color:var(--edge-dim)}
+.arrange-kind button.active{background:none;color:var(--studio-accent)}
+.exact-size input{background:none;border:0;border-bottom:1px solid var(--edge-rule);border-radius:0;color:var(--edge-ink);width:62px}
+.exact-size input:focus{border-bottom-color:var(--studio-accent)}
+.exact-size em{color:var(--edge-faint)}
+.explode-title{color:var(--edge-dim)}
+.explode-controls .explode-dismiss,.explode-expand{color:var(--edge-faint)}
+.explode-expand{padding:6px 0;border-radius:0}
+.explode-expand:hover,.explode-expand:focus-visible,.explode-controls .explode-dismiss:hover{color:var(--studio-accent)}
+.explode-stages button{color:var(--edge-faint)}
+.explode-stages button>span{background:var(--edge-rule)}
+.explode-stages button.active{color:var(--studio-accent)}
+.explode-stages button.active>span{background:var(--studio-accent)}
+.explode-controls:not(.is-collapsed){opacity:.6}
+
+/* --- The way out and the way back --------------------------------------- */
+.panel-pill.panel-pill{color:var(--edge-dim);padding:6px 0;text-shadow:var(--edge-shadow);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase}
+.panel-pill.panel-pill:hover,.panel-pill.panel-pill:focus-visible{color:var(--studio-accent);background:none}
+.panel-dismiss{color:var(--edge-faint);opacity:.7;border-radius:0}
+.panel-dismiss:hover,.panel-dismiss:focus-visible{color:var(--studio-accent);background:none;opacity:1}
+.view-dock .dock-dismiss,.viewport-top-tools .tools-dismiss,.arrange-row .layout-dismiss{width:auto;height:auto;padding:6px 0}
+
+/* The connection bar was the last thing centred on the screen; an alert is not
+   a reason to cover the model, so it reports from the top-right corner. */
+.connection-error{left:auto;right:24px;transform:none}
+
+@media(max-width:900px){.layout-widget:not(.is-collapsed){left:calc(var(--rail-w) + var(--left-w) + 9px);right:calc(var(--right-w) + 9px);max-width:none}}
+@media(max-width:700px){
+  .viewport-heading{left:calc(var(--rail-w) + 18px);top:23px}
+  .viewport-top-tools{right:12px}
+  .view-dock{right:12px;bottom:44px}
+  .layout-widget,.explode-controls{left:calc(var(--rail-w) + 12px)}
+  .viewport-corner-label{left:calc(var(--rail-w) + 14px)}
+  .connection-error{right:12px;max-width:calc(100% - 24px)}
+}@media(max-height:640px){
+  .view-dock{bottom:34px}
+  .layout-widget,.explode-controls{bottom:34px}
+}
