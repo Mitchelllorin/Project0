@@ -71,6 +71,16 @@ describe('the model owns the window', () => {
     expect(resolved(selector, 'transform')).not.toBe('translateX(-50%)');
   });
 
+  // Not merely shadowed — gone. A `50%` left with a matching transform is the
+  // exact idiom for anchoring something to the middle of the window, and leaving
+  // dead ones in the file means the next person to reorder a block resurrects
+  // one without noticing. There is no if about it: the stylesheet does not
+  // contain the pattern at all.
+  test('the stylesheet has no way to anchor anything to the middle', () => {
+    expect(css).not.toContain('left:50%');
+    expect(css).not.toContain('translateX(-50%)');
+  });
+
   // Not merely "not 50%": the strips have to clear the columns they now share
   // the perimeter with, and that is what the three width properties are for.
   //
