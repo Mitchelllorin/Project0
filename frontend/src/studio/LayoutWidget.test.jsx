@@ -20,8 +20,8 @@ function studioWith(overrides = {}) {
     config: {units: 'mm', custom: false, groups: [], finish: 'oak'},
     scene: {
       cabinets: [
-        {id: 'B01', name: 'Base 30', width: 762, position: [0, 0, 304.8], rotation: 0},
-        {id: 'B02', name: 'Base 30', width: 762, position: [762, 0, 304.8], rotation: 0},
+        {id: 'B01', name: 'Base 30', kind: 'base', width: 762, position: [0, 0, 304.8], rotation: 0},
+        {id: 'B02', name: 'Base 30', kind: 'drawers', width: 762, position: [762, 0, 304.8], rotation: 0},
       ],
     },
     selected: ['B01'],
@@ -30,6 +30,7 @@ function studioWith(overrides = {}) {
     gizmoMode: 'translate',
     setGizmoMode: jest.fn(),
     setCabinetWidth: jest.fn(),
+    morphCabinet: jest.fn(),
     addCabinet: jest.fn(),
     removeCabinet: jest.fn(),
     resetArrangement: jest.fn(),
@@ -68,9 +69,33 @@ describe('LayoutWidget', () => {
     expect(byTestId(c, 'layout-widget-collapsed')).toBeNull();
   });
 
-  it('shows the carcass size on the row, where a pull is happening', () => {
+  it('shows the carcass size and what it is, on the row where a pull happens', () => {
     const c = render();
-    expect(byTestId(c, 'layout-size-readout').textContent).toBe('762 mm');
+    expect(byTestId(c, 'layout-size-readout').textContent).toBe('762 mm · Doors');
+  });
+
+  it('turns a placed cabinet into a different cabinet, in place', () => {
+    const c = render();
+    openMore(c);
+    expect(byTestId(c, 'kind-base').getAttribute('aria-pressed')).toBe('true');
+    ['drawers', 'corner-out', 'corner'].forEach(id => expect(byTestId(c, `kind-${id}`)).not.toBeNull());
+    act(() => byTestId(c, 'kind-drawers').click());
+    expect(mockStudio.morphCabinet).toHaveBeenCalledWith('B01', 'drawers');
+  });
+
+  it('accepts a size typed by hand, and only re-cuts once the field is left', () => {
+    const c = render();
+    openMore(c);
+    const field = byTestId(c, 'cabinet-size-input');
+    expect(field.value).toBe('762');
+    // React tracks the value on the node, so assigning `.value` reads as no change; go
+    // through the native setter the way a real keystroke does.
+    const setValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    act(() => { setValue.call(field, '900'); field.dispatchEvent(new Event('input', {bubbles: true})); });
+    expect(mockStudio.setCabinetWidth).not.toHaveBeenCalled();
+    // React delegates blur as focusout, so leave the field the way a person does.
+    act(() => { field.focus(); field.blur(); });
+    expect(mockStudio.setCabinetWidth).toHaveBeenCalledWith('B01', 900);
   });
 
   it('is one row of controls, so it does not cover the model', () => {

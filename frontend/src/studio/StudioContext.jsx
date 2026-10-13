@@ -3,6 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { applyPalette, DEFAULT_PALETTE } from './palette';
 import { pickedAfterToggle } from './doors';
+import { morphPlacement } from './layoutWidget';
 import { encodeState, readShareHash } from './share';
 import { buildTimeDeployment, fetchDeployment, initialBrand, adoptServerBrand } from './deployment';
 import { API_BASE } from './api';
@@ -134,9 +135,12 @@ export function StudioProvider({children}) {
     const next=prev=>{const base=prev.placements&&prev.placements.length?prev.placements:asPlacements();return {...prev,custom:true,placements:base.map(p=>p.id===id?place(p):p)};};
     if(live)setConfig(next);else update(next(configRef.current));
   };
+  // Turning a placed cabinet into a different cabinet. The engine re-cuts it from the
+  // catalog, so the panels, the hardware and the price all follow from one word changing.
+  const morphCabinet=(id,kind)=>update({custom:true,placements:asPlacements().map(p=>p.id===id?morphPlacement(p,kind):p)});
   const resetArrangement=()=>update({custom:false,placements:[]});
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,dealer,dealerBusy,signInDealer,signOutDealer,palette,setPalette,doorsOpen,toggleDoors,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resizeCabinet,resetArrangement,picked:picked.current,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,dealer,dealerBusy,signInDealer,signOutDealer,palette,setPalette,doorsOpen,toggleDoors,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resizeCabinet,morphCabinet,resetArrangement,picked:picked.current,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);

@@ -1,7 +1,8 @@
 import {
-  GIZMO_MODES, ROTATION_SNAP_RAD, SIZE_MAX_MM, SIZE_MIN_MM, SIZE_SNAP_MM,
-  TRANSLATION_SNAP_M, WIDTH_OPTIONS,
-  groupFor, placementReadout, rotationDegrees, snapLabel, stretchable, stretchedWidth,
+  CABINET_KINDS, CORNER_FACE_MM, GIZMO_MODES, ROTATION_SNAP_RAD, SIZE_MAX_MM, SIZE_MIN_MM,
+  SIZE_SNAP_MM, TRANSLATION_SNAP_M, WIDTH_OPTIONS,
+  clampSize, groupFor, morphPlacement, placementReadout, rotationDegrees, snapLabel,
+  stretchable, stretchedWidth,
 } from './layoutWidget';
 
 describe('layout widget rules', () => {
@@ -107,5 +108,47 @@ describe('stretching a cabinet by its end', () => {
     expect(stretchable('drawers')).toBe(true);
     expect(stretchable('corner-out')).toBe(true);
     expect(stretchable('corner')).toBe(false);
+  });
+});
+
+// Turning a placed cabinet into a different cabinet is the whole promise of a custom
+// layout, so what survives a morph and what does not is pinned here.
+describe('morphing one cabinet into another', () => {
+  const unit = {id: 'N01', kind: 'base', width: 762, x: 1200, z: 304.8, rotation: 1.5708};
+
+  it('offers every kind the catalog will build', () => {
+    expect(CABINET_KINDS.map(k => k.id)).toEqual(['base', 'drawers', 'corner-out', 'corner']);
+    expect(CABINET_KINDS.every(k => k.label && k.hint)).toBe(true);
+  });
+
+  it('leaves the cabinet standing exactly where it was', () => {
+    const morphed = morphPlacement(unit, 'drawers');
+    expect(morphed).toMatchObject({id: 'N01', x: 1200, z: 304.8, rotation: 1.5708, kind: 'drawers'});
+  });
+
+  it('carries a run width across, because 900 mm of run is 900 mm of run', () => {
+    expect(morphPlacement({...unit, width: 1016}, 'drawers').width).toBe(1016);
+    expect(morphPlacement({...unit, width: 1016}, 'corner-out').width).toBe(1016);
+  });
+
+  it('brings a face length into a diagonal corner rather than reinterpreting the run', () => {
+    expect(morphPlacement({...unit, width: 457.2}, 'corner').width).toBe(CORNER_FACE_MM);
+  });
+
+  it('leaves the width alone coming back out of a corner', () => {
+    const corner = {id: 'N02', kind: 'corner', width: CORNER_FACE_MM, x: 0, z: 0, rotation: 0};
+    expect(morphPlacement(corner, 'base').width).toBe(CORNER_FACE_MM);
+  });
+
+  it('is a no-op when it is already that cabinet', () => {
+    const same = morphPlacement(unit, 'base');
+    expect(same).toBe(unit);
+  });
+
+  it('accepts any size the catalog builds, and refuses the rest', () => {
+    expect(clampSize(800)).toBe(800);
+    expect(clampSize(10)).toBe(SIZE_MIN_MM);
+    expect(clampSize(9999)).toBe(SIZE_MAX_MM);
+    expect(clampSize(Number.NaN)).toBe(SIZE_MIN_MM);
   });
 });

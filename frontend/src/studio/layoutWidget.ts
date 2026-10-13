@@ -41,6 +41,43 @@ export function stretchedWidth(
   return {width: next, shift: (side * (next - width)) / 2};
 }
 
+// What a cabinet *is*. The engine re-cuts every one of these from the catalog, so
+// changing this on a placed cabinet rebuilds its panels, its hardware and its price
+// without touching where it stands.
+export const CABINET_KINDS = [
+  {id: 'base', label: 'Doors', hint: 'A double-door base unit'},
+  {id: 'drawers', label: 'Drawers', hint: 'A three-drawer base unit'},
+  {id: 'corner-out', label: 'Outside corner', hint: 'A base unit with a return panel'},
+  {id: 'corner', label: 'Inside corner', hint: 'A diagonal corner carcass'},
+];
+
+// A diagonal corner's width is the length of its face, so that is the size a morph
+// brings with it (the same 36 in a new corner is added at).
+export const CORNER_FACE_MM = 914.4;
+
+/**
+ * One cabinet turned into another, standing exactly where it was.
+ *
+ * Everything about the placement survives except the kind — and, going into a
+ * diagonal corner, the width, because a corner's width is a face length and not a run
+ * of cabinet. Reinterpreting a 762 mm run as a 762 mm diagonal would quietly build a
+ * different unit than the one on screen. Coming *out* of a corner the width is left
+ * alone: 914 mm is a perfectly good run.
+ */
+export function morphPlacement<T extends {kind?: string; width?: number}>(
+  placement: T,
+  kind: string,
+): T {
+  if (placement.kind === kind) return placement;
+  return {...placement, kind, width: kind === 'corner' ? CORNER_FACE_MM : placement.width};
+}
+
+/** Any size the catalog will build, in millimetres, from whatever was typed. */
+export function clampSize(millimetres: number): number {
+  if (!Number.isFinite(millimetres)) return SIZE_MIN_MM;
+  return Math.max(SIZE_MIN_MM, Math.min(SIZE_MAX_MM, millimetres));
+}
+
 export const GIZMO_MODES = [
   {id: 'translate', label: 'Move', hint: 'Drag the coloured arrows to slide the cabinet'},
   {id: 'rotate', label: 'Rotate', hint: 'Drag the coloured rings to turn the cabinet'},
