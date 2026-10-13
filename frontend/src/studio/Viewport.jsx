@@ -13,6 +13,7 @@ import {Room3D} from './Room3D';
 import {formatDimension,explodedPosition} from './engine';
 import {useDeviceProfile,renderBudget,profileFrom} from './device';
 import {tapGuard,installTapGuard} from './pointer';
+import {ORBIT_DAMPING,freezeShadows,resumeShadows} from './interaction';
 import {Button} from '../components/ui/button';
 import {toast} from 'sonner';
 import * as THREE from 'three';
@@ -46,7 +47,7 @@ function TouchGestures({onRackDismiss}) {
 }
 
 function CameraRig({command,assembly,center,width}) {
-  const controls=useRef();const {camera,gl,scene,size}=useThree();const [ready,setReady]=useState(false);
+  const controls=useRef();const {camera,gl,scene,size,invalidate}=useThree();const [ready,setReady]=useState(false);
   useEffect(()=>{
     const target=assembly?[0,.48,0]:[0,1,0];
     const mobile=size.width<600;
@@ -60,7 +61,9 @@ function CameraRig({command,assembly,center,width}) {
     controls.current?.update();setReady(true);
   },[command,assembly,width,gl,camera,scene,size.width,size.height]);
   useEffect(()=>{window.__studio3d={renderer:gl,scene,camera};return()=>{delete window.__studio3d;};},[gl,scene,camera]);
-  return <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={.08} minDistance={assembly?.3:2} maxDistance={16} maxPolarAngle={Math.PI/2-.04} target={[0,assembly?.48:1,0]} enabled={ready}/>;
+  // A drag that ends by navigating away never fires 'end'; put the shadow map back.
+  useEffect(()=>()=>resumeShadows(gl),[gl]);
+  return <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={ORBIT_DAMPING} minDistance={assembly?.3:2} maxDistance={16} maxPolarAngle={Math.PI/2-.04} target={[0,assembly?.48:1,0]} enabled={ready} onStart={()=>freezeShadows(gl)} onEnd={()=>resumeShadows(gl,invalidate)}/>;
 }
 
 function AssemblyVectors({cabinets,amount}) {
@@ -136,7 +139,7 @@ export function Viewport({assembly=false}) {
     {tools.open?
       <div className="viewport-top-tools" data-testid="viewport-tools"><PanelDismiss label="the view tools" testId="tools-dismiss" className="tools-dismiss" onDismiss={tools.dismiss}/><button data-testid="lighting-toggle" title="Switch lighting" onClick={()=>update({lighting:config.lighting==='daylight'?'evening':'daylight'})}>{config.lighting==='daylight'?<Sun size={15}/>:<Moon size={15}/>}<span>{config.lighting==='daylight'?'Daylight':'Evening'}</span></button>{!assembly&&<button data-testid="doors-toggle" title={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} aria-label={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} onClick={toggleDoors}><DoorOpen size={15}/><span>{doorsOpen?"Close doors":"Open doors"}</span></button>}{!assembly&&<button data-testid="arrange-toggle" className={arrange?"active":""} title="Arrange cabinets freely" aria-label="Arrange cabinets" onClick={()=>setArrange(!arrange)}><Move size={15}/><span>{arrange?"Arranging":"Arrange"}</span></button>}{!assembly&&<button data-testid="open-assembly" disabled={!selected.length} title={selected.length?"Explore this cabinet's assembly":"Select a cabinet first"} aria-label="Explore assembly" onClick={()=>selected.length&&navigate('/assembly')}><Layers size={15}/><span>Assembly</span></button>}<span className="render-quality" data-testid="render-quality"><span/> {busy?'Updating':'Live render'}</span>{config.rack!=='none'&&<button data-testid="dismiss-pot-rack" title="Remove pot rack" aria-label="Remove pot rack" onClick={()=>update({rack:'none'})}><span>{config.rack.charAt(0).toUpperCase()+config.rack.slice(1)} pot rack</span><X size={14}/></button>}</div>
       :<div className="viewport-top-tools" data-testid="viewport-tools-collapsed"><PanelPill label="the view tools" text="View tools" icon={<SlidersHorizontal size={13}/>} testId="tools-expand" onRestore={tools.restore}/></div>}
-    <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
+    <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
     {!assembly&&arrange&&<LayoutWidget/>}
     <div className="viewport-corner-label" data-testid="viewport-layout"><BoxIcon size={14}/>{assembly?'COMPONENT VIEW':{ 'l-shape':'L-SHAPED / CONCEPT 01',straight:'LINEAR / CONCEPT 02',galley:'GALLEY / CONCEPT 03'}[config.layout]}{!assembly&&config.dimensions&&<span data-testid="scene-width-dimension"> · {formatDimension(scene.dimensions.footprint_width,config.units)}</span>}</div>
     {dock.open?
