@@ -1,11 +1,11 @@
 import React,{Suspense,useEffect,useMemo,useRef,useState} from 'react';
 import {Canvas,useThree,useFrame} from '@react-three/fiber';
-import {OrbitControls,Environment,Lightformer,ContactShadows,Line,TransformControls} from '@react-three/drei';
+import {OrbitControls,Environment,Lightformer,ContactShadows,Line,TransformControls,useCursor} from '@react-three/drei';
 import {Box as BoxIcon,Camera,Sun,Moon,Plus,Minus,Focus,Layers,X,DoorOpen,Move,Info,SlidersHorizontal} from 'lucide-react';
 import {PanelDismiss,PanelPill,usePanel} from './Panels';
 import {useStudio} from './StudioContext';
 import {LayoutWidget} from './LayoutWidget';
-import {TRANSLATION_SNAP_M,ROTATION_SNAP_RAD} from './layoutWidget';
+import {TRANSLATION_SNAP_M,ROTATION_SNAP_RAD,stretchedWidth,stretchable} from './layoutWidget';
 import {doorsOpenFor} from './doors';
 import {useNavigate} from 'react-router-dom';
 import {Cabinet3D} from './Cabinet3D';
@@ -19,6 +19,73 @@ import {toast} from 'sonner';
 import * as THREE from 'three';
 
 const HIGH_BUDGET=renderBudget(profileFrom({width:1440,height:900}));
+
+// The grip sits on the front face just under the counter line, not on the end panel.
+// An end panel is exactly where the next cabinet in the run is standing, so a pull that
+// lived there could not be reached on any cabinet that had a neighbour — which is every
+// cabinet in a fitted kitchen.
+const GRIP_Y=.945;
+const GRIP_Z=.05;
+
+// Pulling the end of a cabinet is the one layout move that is quicker to do than to
+// describe. The grip is a bar on the end face of the selected cabinet; dragging it moves
+// that end and only that end, so a run that grows never shoves the cabinet standing next
+// to it — see `stretchedWidth` for the arithmetic and its tests for the proof.
+function SizeGrip({cabinet,side,onResize}){
+  const {gl,camera}=useThree();
+  const controls=useThree(state=>state.controls);
+  const frame=useRef(null),pull=useRef(null);
+  const [active,setActive]=useState(false),[hovered,setHovered]=useState(false);
+  useCursor(hovered);
+  const rad=cabinet.rotation||0;
+  useEffect(()=>{
+    if(!active)return;
+    const element=gl.domElement,ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),hit=new THREE.Vector3();
+    const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-(cabinet.height/1000)*GRIP_Y);
+    const move=event=>{
+      if(!frame.current)return;
+      const rect=element.getBoundingClientRect();
+      pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
+      ray.setFromCamera(pointer,camera);
+      if(!ray.ray.intersectPlane(plane,hit))return;
+      // The frame has moved since the last paint, so bring its matrix up to date before
+      // asking it where the pointer is; otherwise the pull reads the previous frame's pose.
+      frame.current.updateWorldMatrix(true,false);
+      const local=frame.current.worldToLocal(hit.clone());
+      const {width,shift}=stretchedWidth({width:pull.current.width,localX:local.x*1000,side});
+      const x=pull.current.x+shift*Math.cos(rad),z=pull.current.z-shift*Math.sin(rad);
+      pull.current={...pull.current,width,x,z};
+      onResize(cabinet.id,width,x,z,true);
+    };
+    const end=()=>{
+      setActive(false);
+      if(controls)controls.enabled=true;
+      // The release is the one move worth an undo step.
+      if(pull.current)onResize(cabinet.id,pull.current.width,pull.current.x,pull.current.z,false);
+    };
+    element.addEventListener('pointermove',move);
+    element.addEventListener('pointerup',end);
+    element.addEventListener('pointercancel',end);
+    return()=>{element.removeEventListener('pointermove',move);element.removeEventListener('pointerup',end);element.removeEventListener('pointercancel',end);};
+  },[active,gl,camera,rad,side,cabinet.id,cabinet.height,onResize,controls]);
+  const grab=event=>{
+    event.stopPropagation();
+    pull.current={width:cabinet.width,x:cabinet.position[0],z:cabinet.position[2]};
+    // This is what makes the pull a pull: three re-checks `enabled` on every move, so it
+    // does not matter that OrbitControls saw the pointerdown before this handler ran.
+    if(controls)controls.enabled=false;
+    try{gl.domElement.setPointerCapture(event.pointerId);}catch{/* not capturable */}
+    setActive(true);
+  };
+  const w=cabinet.width/1000;
+  return <group ref={frame}>
+    <mesh name={`size-grip-${side>0?'right':'left'}`} position={[side*(w/2-.03),(cabinet.height/1000)*GRIP_Y,cabinet.depth/2000+GRIP_Z]}
+      onPointerDown={grab} onPointerOver={e=>{e.stopPropagation();setHovered(true);}} onPointerOut={()=>setHovered(false)}>
+      <boxGeometry args={[.03,.11,.03]}/>
+      <meshStandardMaterial color={active?'#ffd08a':hovered?'#f0cd93':'#dcb478'} emissive="#e2b878" emissiveIntensity={active?.5:0} metalness={.25} roughness={.35}/>
+    </mesh>
+  </group>;
+}
 
 function TouchGestures({onRackDismiss}) {
   const {gl,camera,scene}=useThree();
@@ -87,7 +154,7 @@ function AssemblyVectors({cabinets,amount}) {
 }
 
 function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
-  const {scene,config,selected,selectCabinet,explode,inspected,setInspected,camera,update,doorsOpen,arrange,gizmoMode,moveCabinet,picked}=useStudio();
+  const {scene,config,selected,selectCabinet,explode,inspected,setInspected,camera,update,doorsOpen,arrange,setArrange,gizmoMode,moveCabinet,resizeCabinet,picked}=useStudio();
   const gizmo=useRef();
   const chosen=assembly?scene.cabinets.filter(c=>selected.includes(c.id)):scene.cabinets;
   const box=useMemo(()=>{
@@ -105,11 +172,16 @@ function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
     <Environment resolution={budget.environmentResolution}><Lightformer intensity={3} position={[0,4,0]} rotation={[Math.PI/2,0,0]} scale={[8,8,1]}/><Lightformer intensity={2} position={[-4,2,3]} rotation={[0,Math.PI/2,0]} scale={[4,5,1]}/></Environment>
     <group position={offset}>
       {chosen.map(c=>{
-        const props={cabinet:c,config,selected:selected.includes(c.id),amount:assembly?explode:0,assembly,inspected,onSelect:selectCabinet,onInspect:setInspected,open:doorsOpenFor(c.id,{doorsOpen,selected,assembly,picked}),onOpenAssembly:()=>onOpenAssembly&&onOpenAssembly(c.id)};
+        // Touching a cabinet in the model is how you ask to move it. Selecting from a
+        // panel list is a different intent, so that path leaves the layout card alone.
+        const props={cabinet:c,config,selected:selected.includes(c.id),amount:assembly?explode:0,assembly,inspected,onSelect:id=>{selectCabinet(id);if(!assembly)setArrange(true);},onInspect:setInspected,open:doorsOpenFor(c.id,{doorsOpen,selected,assembly,picked}),onOpenAssembly:()=>onOpenAssembly&&onOpenAssembly(c.id)};
         if(!arrange||!selected.includes(c.id)||c.id!==selected[0])return <Cabinet3D key={c.id} {...props}/>;
-        return <TransformControls key={c.id} mode={gizmoMode} translationSnap={TRANSLATION_SNAP_M} rotationSnap={ROTATION_SNAP_RAD} size={.75} onMouseUp={()=>{const o=gizmo.current;if(o)moveCabinet(c.id,o.position.x*1000,o.position.z*1000,o.rotation.y);}}>
-          <group ref={gizmo} position={c.position.map(n=>n/1000)} rotation={[0,c.rotation,0]}><Cabinet3D {...props} cabinet={{...c,position:[0,0,0],rotation:0}}/></group>
-        </TransformControls>;
+        return <React.Fragment key={c.id}>
+          <TransformControls mode={gizmoMode} translationSnap={TRANSLATION_SNAP_M} rotationSnap={ROTATION_SNAP_RAD} size={.75} onMouseUp={()=>{const o=gizmo.current;if(o)moveCabinet(c.id,o.position.x*1000,o.position.z*1000,o.rotation.y);}}>
+            <group ref={gizmo} position={c.position.map(n=>n/1000)} rotation={[0,c.rotation,0]}><Cabinet3D {...props} cabinet={{...c,position:[0,0,0],rotation:0}}/></group>
+          </TransformControls>
+          {stretchable(c.kind)&&<group position={c.position.map(n=>n/1000)} rotation={[0,c.rotation,0]}>{[1,-1].map(side=><SizeGrip key={side} cabinet={c} side={side} onResize={resizeCabinet}/>)}</group>}
+        </React.Fragment>;
       })}
       {!assembly&&<Room3D config={config} cabinets={scene.cabinets} onCeilingToggle={()=>update({ceiling:!config.ceiling})} onRackDismiss={()=>update({rack:'none'})}/>}
       {assembly&&explode>.02&&<AssemblyVectors cabinets={chosen} amount={explode}/>}

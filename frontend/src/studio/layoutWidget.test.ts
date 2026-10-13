@@ -1,6 +1,7 @@
 import {
-  GIZMO_MODES, ROTATION_SNAP_RAD, TRANSLATION_SNAP_M, WIDTH_OPTIONS,
-  groupFor, placementReadout, rotationDegrees, snapLabel,
+  GIZMO_MODES, ROTATION_SNAP_RAD, SIZE_MAX_MM, SIZE_MIN_MM, SIZE_SNAP_MM,
+  TRANSLATION_SNAP_M, WIDTH_OPTIONS,
+  groupFor, placementReadout, rotationDegrees, snapLabel, stretchable, stretchedWidth,
 } from './layoutWidget';
 
 describe('layout widget rules', () => {
@@ -48,5 +49,63 @@ describe('layout widget rules', () => {
     expect(readout).toEqual({id: 'B02', position: '762 mm · 305 mm', rotation: '90°'});
     expect(placementReadout(null, 'mm')).toBeNull();
     expect(placementReadout(undefined, 'in')).toBeNull();
+  });
+});
+
+// Pulling the end of a cabinet is the one layout move that is quicker to do than
+// to describe, so the arithmetic behind it is pinned here rather than tuned by eye.
+describe('stretching a cabinet by its end', () => {
+  it('snaps to the inch a cabinet maker quotes in', () => {
+    expect(SIZE_SNAP_MM).toBe(25.4);
+    expect(SIZE_MIN_MM).toBe(304.8);
+    expect(SIZE_MAX_MM).toBe(1524);
+    const pulled = stretchedWidth({width: 762, localX: 400.7, side: 1});
+    expect(pulled.width % SIZE_SNAP_MM).toBeCloseTo(0, 6);
+  });
+
+  it('leaves the far end exactly where it was when pulled from the right', () => {
+    // 635 mm from the centre is 1016 mm of carcass: 40 in, the stock size.
+    const {width, shift} = stretchedWidth({width: 762, localX: 635, side: 1});
+    expect(width).toBe(1016);
+    // far end before: -381, after: centre + shift - width/2
+    expect(shift - width / 2).toBeCloseTo(-762 / 2, 6);
+    expect(shift).toBeCloseTo((width - 762) / 2, 6);
+  });
+
+  it('leaves the far end exactly where it was when pulled from the left', () => {
+    const {width, shift} = stretchedWidth({width: 762, localX: -635, side: -1});
+    expect(width).toBe(1016);
+    expect(shift).toBeCloseTo(-(width - 762) / 2, 6);
+  });
+
+  it('mirrors: pulling either end to the same distance gives the same width', () => {
+    const right = stretchedWidth({width: 762, localX: 510, side: 1});
+    const left = stretchedWidth({width: 762, localX: -510, side: -1});
+    expect(right.width).toBe(left.width);
+    expect(right.shift).toBeCloseTo(-left.shift, 6);
+  });
+
+  it('never pulls a carcass below the smallest it is built in', () => {
+    const tiny = stretchedWidth({width: 762, localX: -900, side: 1});
+    expect(tiny.width).toBe(SIZE_MIN_MM);
+    expect(tiny.shift).toBeCloseTo((SIZE_MIN_MM - 762) / 2, 6);
+  });
+
+  it('never pulls a carcass past the widest it is built in', () => {
+    const huge = stretchedWidth({width: 762, localX: 99999, side: 1});
+    expect(huge.width).toBe(SIZE_MAX_MM);
+  });
+
+  it('a drag that has not moved the end changes nothing', () => {
+    const still = stretchedWidth({width: 762, localX: 381, side: 1});
+    expect(still.width).toBe(762);
+    expect(still.shift).toBe(0);
+  });
+
+  it('leaves a diagonal corner alone, because its width is a face not a run', () => {
+    expect(stretchable('base')).toBe(true);
+    expect(stretchable('drawers')).toBe(true);
+    expect(stretchable('corner-out')).toBe(true);
+    expect(stretchable('corner')).toBe(false);
   });
 });

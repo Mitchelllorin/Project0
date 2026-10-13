@@ -46,14 +46,14 @@ beforeEach(() => {
   mockStudio = studioWith();
 });
 
-// Most tests drive the summoned card, which is one click behind the pill the
-// widget starts as. `render({summon:false})` is for the tests about the pill.
-function render({summon = true} = {}) {
+// The card starts open now. The only way in is asking to lay the kitchen out — tapping a
+// cabinet in the model or pressing Layout — so a click to summon a card you just asked for
+// was a step with nothing in it. Dismissing it still leaves the pill; that is tested below.
+function render() {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
   act(() => root.render(<LayoutWidget/>));
-  if (summon) act(() => byTestId(container, 'layout-expand').click());
   return container;
 }
 
@@ -61,23 +61,19 @@ const byTestId = (c, id) => c.querySelector(`[data-testid="${id}"]`);
 const openMore = c => act(() => byTestId(c, 'layout-more').click());
 
 describe('LayoutWidget', () => {
-  it('starts as one labelled pill, so nothing sits over the model until it is asked for', () => {
-    const c = render({summon: false});
-    // The card is not on screen at all...
-    expect(byTestId(c, 'layout-widget')).toBeNull();
+  it('opens straight away: you already asked for it by tapping the cabinet', () => {
+    const c = render();
     ['layout-bar', 'gizmo-translate', 'layout-merge', 'layout-more', 'done-arranging']
-      .forEach(id => expect(byTestId(c, id)).toBeNull());
-    // ...only the way to summon it, in the same corner it will occupy.
-    const collapsed = byTestId(c, 'layout-widget-collapsed');
-    expect(collapsed.className).toContain('is-collapsed');
-    expect(byTestId(c, 'layout-expand').textContent).toContain('Layout');
-
-    act(() => byTestId(c, 'layout-expand').click());
-    expect(byTestId(c, 'layout-bar')).not.toBeNull();
+      .forEach(id => expect(byTestId(c, id)).not.toBeNull());
     expect(byTestId(c, 'layout-widget-collapsed')).toBeNull();
   });
 
-  it('is one row of controls once summoned, so it does not cover the model', () => {
+  it('shows the carcass size on the row, where a pull is happening', () => {
+    const c = render();
+    expect(byTestId(c, 'layout-size-readout').textContent).toBe('762 mm');
+  });
+
+  it('is one row of controls, so it does not cover the model', () => {
     const c = render();
     expect(byTestId(c, 'layout-bar')).not.toBeNull();
     // Nothing heavy is in the DOM until it is asked for.
@@ -85,7 +81,7 @@ describe('LayoutWidget', () => {
       'add-base', 'add-drawers', 'add-corner', 'add-corner-out',
       'remove-cabinet', 'reset-arrangement'].forEach(id => expect(byTestId(c, id)).toBeNull());
     // ...while the controls you actually reach for are on the row.
-    ['gizmo-translate', 'gizmo-rotate', 'layout-merge', 'layout-more', 'layout-dismiss', 'done-arranging']
+    ['gizmo-translate', 'gizmo-rotate', 'layout-size-readout', 'layout-merge', 'layout-more', 'layout-dismiss', 'done-arranging']
       .forEach(id => expect(byTestId(c, id)).not.toBeNull());
   });
 

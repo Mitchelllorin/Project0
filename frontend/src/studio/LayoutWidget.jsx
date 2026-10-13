@@ -5,6 +5,7 @@ import {useStudio} from './StudioContext';
 import {MergeDialog} from './MergeDialog';
 import {GIZMO_MODES,WIDTH_OPTIONS,groupFor,placementReadout,snapLabel} from './layoutWidget';
 import {PanelDismiss,PanelPill,usePanel} from './Panels';
+import {formatDimension} from './engine';
 
 // Deliberately one row. While you are arranging, the card must not sit over the
 // model, so the controls reached for constantly — move, rotate, merge, done —
@@ -18,11 +19,12 @@ export function LayoutWidget(){
   // being put away. Dismissing it leaves a pill in the same corner, so arranging can be
   // got out of and back into without leaving arrange mode.
   //
-  // It starts put away: entering arrange mode shows one labelled "Layout" pill, and the
-  // card appears when that pill is clicked. The card is anchored over the model and, in a
-  // view narrower than a desktop window, it was both the thing in the way and the thing
-  // that could not be reached — a click to summon it fixes both.
-  const panel=usePanel(false);
+  // It starts open, because the only way in is asking to lay the kitchen out — tapping a
+  // cabinet in the model, or pressing Layout. An extra click to summon a card you just
+  // asked for is a step with nothing in it. The card is capped below the middle of the
+  // model (App.css, locked by layoutCardCap.test.js), so open is no longer the same as in
+  // the way, and dismissing it still leaves a pill that brings it back.
+  const panel=usePanel(true);
   const cabinets=scene?scene.cabinets:[];
   const current=cabinets.find(c=>c.id===selected[0])||null;
   const group=groupFor(config.groups,selected[0]);
@@ -39,6 +41,7 @@ export function LayoutWidget(){
       <span className="arrange-hint" data-testid="layout-group-readout">{group?`Merged run ${group.join(' + ')}`:`Gizmo snaps to ${snapLabel(config.units)}`}</span>
     </div>}
     <div className="arrange-row layout-bar" data-testid="layout-bar">
+      {current&&<span className="layout-size" data-testid="layout-size-readout" title={`${current.id} carcass · pull either end to stretch it`}>{formatDimension(current.width,config.units)}</span>}
       <div className="arrange-segment">{GIZMO_MODES.map(mode=><button key={mode.id} type="button" data-testid={`gizmo-${mode.id}`} className={gizmoMode===mode.id?'active':''} aria-pressed={gizmoMode===mode.id} title={mode.hint} onClick={()=>setGizmoMode(mode.id)}>{mode.id==='rotate'?<RotateCw size={13}/>:<Move size={13}/>} {mode.label}</button>)}</div>
       {group?<button type="button" data-testid="layout-unmerge" title={`Unmerge ${group.join(' + ')}`} onClick={unmerge}><Unlink size={13}/> Unmerge</button>:<button type="button" data-testid="layout-merge" title="Merge neighbouring cabinets into one run" onClick={()=>setMergeOpen(true)}><Link2 size={13}/> Merge</button>}
       <button type="button" className={open?'active':''} data-testid="layout-more" aria-expanded={open} title="More layout controls" onClick={()=>setOpen(!open)}><SlidersHorizontal size={13}/> {open?'Less':'More'}</button>

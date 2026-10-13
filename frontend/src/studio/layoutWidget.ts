@@ -8,6 +8,39 @@ import {formatDimension} from './engine';
 export const TRANSLATION_SNAP_M = 0.0254;
 export const ROTATION_SNAP_RAD = Math.PI / 12;
 
+// The range a stock carcass is built in, and the step a stretch lands on: one
+// inch, the same grid the gizmo translates on. A cabinet maker quotes whole
+// inches, so a drag has to finish on one instead of leaving a 743 mm door.
+export const SIZE_MIN_MM = 304.8;
+export const SIZE_MAX_MM = 1524;
+export const SIZE_SNAP_MM = 25.4;
+
+// A diagonal corner's width is the length of its face, not a run of cabinet, so
+// pulling it is a different job. Everything else stretches.
+export function stretchable(kind: string | undefined): boolean {
+  return kind !== 'corner';
+}
+
+/**
+ * Where a cabinet ends up when one of its ends is pulled.
+ *
+ * `localX` is the pointer measured in the cabinet's own frame, `side` is the end
+ * being dragged (+1 for the right of the carcass, -1 for the left). The opposite
+ * end does not move — that is the whole point of stretching rather than resizing:
+ * a run that grows must not shove the cabinet standing next to it.
+ *
+ * `shift` is how far the centre has to move along the cabinet's local X for the
+ * far end to stay put.
+ */
+export function stretchedWidth(
+  {width, localX, side}: {width: number; localX: number; side: number},
+): {width: number; shift: number} {
+  const raw = side * localX + width / 2;
+  const snapped = Math.round(raw / SIZE_SNAP_MM) * SIZE_SNAP_MM;
+  const next = Math.max(SIZE_MIN_MM, Math.min(SIZE_MAX_MM, snapped));
+  return {width: next, shift: (side * (next - width)) / 2};
+}
+
 export const GIZMO_MODES = [
   {id: 'translate', label: 'Move', hint: 'Drag the coloured arrows to slide the cabinet'},
   {id: 'rotate', label: 'Rotate', hint: 'Drag the coloured rings to turn the cabinet'},

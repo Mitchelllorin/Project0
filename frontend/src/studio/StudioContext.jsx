@@ -25,6 +25,9 @@ export function StudioProvider({children}) {
   const shared=readHash();
   const initial=useRef(shared?{id:shared.id,configuration:shared.configuration,brand:shared.brand}:readLocal());
   const [config,setConfig]=useState(()=>({...DEFAULT_CONFIG,...initial.current?.configuration,quote:{...DEFAULT_CONFIG.quote,...initial.current?.configuration?.quote}}));
+  // A drag reads the configuration on every frame; a ref keeps that read current even
+  // while the state it is reading is still being committed.
+  const configRef=useRef(config);configRef.current=config;
   const [brand,setBrand]=useState(()=>initialBrand(initial.current?.brand));
   const [projectId]=useState(initial.current?.id||crypto.randomUUID());
   // The dealer this browser is signed in as, and the code that earns it. The code lives in
@@ -124,9 +127,16 @@ export function StudioProvider({children}) {
   const addCabinet=kind=>{const list=asPlacements().slice();const id=`N${String(list.filter(p=>p.id.startsWith('N')).length+1).padStart(2,'0')}`;const right=list.reduce((m,p)=>Math.max(m,p.x+(p.width||762)/2),0);list.push({id,kind,width:kind==='corner'||kind==='corner-out'?914.4:762,x:Math.round(right+600),z:304.8,rotation:0});update({custom:true,placements:list});setSelected([id]);};
   const removeCabinet=id=>{const list=asPlacements().filter(p=>p.id!==id);update({custom:true,placements:list,groups:config.groups.filter(g=>!g.includes(id)).map(g=>g.filter(x=>x!==id)).filter(g=>g.length>1)});setSelected(list.length?[list[0].id]:[]);};
   const setCabinetWidth=(id,width)=>update({custom:true,placements:asPlacements().map(p=>p.id===id?{...p,width}:p)});
+  // Pulling the end of a cabinet emits a value per frame. Only the release is worth an
+  // undo step, or one stretch would fill the history with every frame it passed through.
+  const resizeCabinet=(id,width,x,z,live)=>{
+    const place=p=>({...p,width:Math.round(width),x:Math.round(x),z:Math.round(z)});
+    const next=prev=>{const base=prev.placements&&prev.placements.length?prev.placements:asPlacements();return {...prev,custom:true,placements:base.map(p=>p.id===id?place(p):p)};};
+    if(live)setConfig(next);else update(next(configRef.current));
+  };
   const resetArrangement=()=>update({custom:false,placements:[]});
   const group=config.groups.find(g=>g.some(id=>selected.includes(id)));
   useEffect(()=>{document.title=`${brand.name || '3D Learning Family'} — ${brand.subtitle || 'Project Zero — Kitchen Visualizer'}`;},[brand.name,brand.subtitle]);
-  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,dealer,dealerBusy,signInDealer,signOutDealer,palette,setPalette,doorsOpen,toggleDoors,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resetArrangement,picked:picked.current,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
+  return <Context.Provider value={{config,update,brand,setBrand,deployment:DEPLOYMENT,scene,error,busy,selected,setSelected,selectCabinet,explode,setExplode,inspected,setInspected,camera,setCamera,mobilePanel,setMobilePanel,presentation,setPresentation,tab,setTab,save,saving,saved,reset,group,undo,redo,canUndo,canRedo,dealer,dealerBusy,signInDealer,signOutDealer,palette,setPalette,doorsOpen,toggleDoors,arrange,setArrange,gizmoMode,setGizmoMode,addCabinet,removeCabinet,moveCabinet,setCabinetWidth,resizeCabinet,resetArrangement,picked:picked.current,share,retry:()=>setRetry(n=>n+1)}}>{children}</Context.Provider>;
 }
 export const useStudio=()=>useContext(Context);
