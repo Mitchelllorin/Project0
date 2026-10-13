@@ -5,9 +5,12 @@ import { applyPalette, DEFAULT_PALETTE } from './palette';
 import { pickedAfterToggle } from './doors';
 import { encodeState, readShareHash } from './share';
 import { buildTimeDeployment, fetchDeployment, initialBrand, adoptServerBrand } from './deployment';
+import { API_BASE } from './api';
 import { readDealerCode, rememberDealerCode, forgetDealerCode, dealerHeaders, fetchDealerSession } from './dealer';
 
-export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+// The base is resolved rather than taken raw: a baked-in localhost is the browser's
+// own machine, which is only right when the studio is being served from it (see api.js).
+export const API = `${API_BASE}/api`;
 export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],custom:false,placements:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65,resale_discount:0}};
 // This install's own identity, baked in at build time. A visitor's saved or shared
 // branding overrides it; the server's copy (fetched below) can re-brand a running

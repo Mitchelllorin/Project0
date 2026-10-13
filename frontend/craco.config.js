@@ -160,18 +160,20 @@ let webpackConfig = {
 };
 
 webpackConfig.devServer = (devServerConfig) => {
-  // Dev-only API proxy: lets a remote/preview dev server reach the backend,
-  // which the browser cannot do via the backend's own localhost. No effect
-  // unless DEV_PROXY_TARGET is set, so normal local development is unchanged.
-  if (process.env.DEV_PROXY_TARGET) {
-    devServerConfig.proxy = [
-      {
-        context: ['/api'],
-        target: process.env.DEV_PROXY_TARGET,
-        changeOrigin: true,
-      },
-    ];
-  }
+  // Dev-only API proxy: the browser talks to one origin and the dev server forwards
+  // /api to the backend, exactly as nginx does in production. Falling back to a local
+  // backend rather than switching the proxy off keeps a plain `yarn start` working when
+  // the studio is opened from somewhere other than this machine - a preview tunnel, or a
+  // phone on the LAN - where the backend's own localhost is unreachable. Local
+  // development is unchanged: there the browser still calls http://localhost:8001
+  // directly, and nothing asks the dev server for /api at all.
+  devServerConfig.proxy = [
+    {
+      context: ['/api'],
+      target: process.env.DEV_PROXY_TARGET || 'http://127.0.0.1:8001',
+      changeOrigin: true,
+    },
+  ];
 
   // Add health check endpoints if enabled
   if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {
