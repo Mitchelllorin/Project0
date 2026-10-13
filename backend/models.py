@@ -182,11 +182,14 @@ class Quote(BaseModel):
     price_tier: Optional[QuotePriceTier] = None
 
 
+# `runs` reports what each merged run did to its cut list: how many joint gables went,
+# and why the run was left alone when it could not be fused.
 class SceneResponse(BaseModel):
     cabinets: list[Cabinet]
     quote: Quote
     dimensions: dict
     counts: dict
+    runs: list[dict] = Field(default_factory=list)
 
 
 class GroupRequest(BaseModel):

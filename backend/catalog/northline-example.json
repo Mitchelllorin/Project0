@@ -31,6 +31,7 @@
   "edges": { "door": ["front", "handle", "left", "right"], "gable": ["front"], "bottom": ["front"] },
   "labels": {
     "gable": "{side} carcass side",
+    "run_partition": "Shared run partition",
     "bottom": "Northline base panel",
     "back": "Northline back panel",
     "rail": "Northline top rail",

@@ -56,7 +56,12 @@ Roadmap: Phase1 manufacturer data/auth/roles; Phase2 save/share, quote exports, 
 - None for the tested Phase0 scope. Keep manufacturer's construction approval distinct from this generic visualization; not certified production drawings or a binding quote.
 ### P1 — after first manufacturer commits
 - Ingest real manufacturer's catalog/materials/pricing/assembly tolerances; independently review generic joinery and hinge placements against their production system.
-- Manufacturer-declared genuinely shared-gable templates and dimension deduplication; current logical merges intentionally retain two gables.
+- Shared-gable runs are now built by the generic engine (`recipe.fuse_run`): a merge removes both
+  gables at the joint, stands one shared partition in their place, drops one carcass from the labour
+  line and reports the saving — see `backend/tests/test_runs.py`. What is still a manufacturer's call
+  is *which* runs they will build as one box, and deduplicating dimensions across a run.
+- A merge that involves a corner is refused with a reason rather than fused on a guess, because a
+  diagonal corner has no gable at the joint to share. Fusing a corner needs its own construction.
 - Higher-fidelity calibrated PBR material library and asset/texture object storage if uploads/assets become necessary.
 - Auth, roles and manufacturer-specific data administration.
 ### P2 — later roadmap

@@ -4,11 +4,12 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import datetime, timezone
+from copy import deepcopy
 from uuid import UUID
 import logging
 import os
 from models import Configuration, SceneResponse, GroupRequest, Project, CatalogItem, ProductAssembly, Deployment, DealerSession, DealerSignIn
-from layout import build_layout, dimensions, make_quote, adjacent
+from layout import build_layout, dimensions, make_quote, adjacent, apply_runs
 from assembly import make_parts
 from recipe import load_catalog, validate_catalog, available_catalogs
 from deployment import deployment
@@ -120,8 +121,11 @@ async def dealer_session(credentials:DealerSignIn):
 async def configure(config:Configuration,dealer=Depends(current_dealer)):
     catalog=resolve_catalog(config.catalog)
     cabinets=build_layout(config,catalog)
+    # A merged run is one box, so the joint gables come out here — before the quote and
+    # the dimensions are derived from the parts, not patched afterwards.
+    runs,joints=apply_runs(cabinets,config.groups,catalog)
     counts={k:sum(1 for c in cabinets for p in c['parts'] if p['category']==k) for k in ['panel','hardware','fastener']}
-    return dict(cabinets=cabinets,quote=make_quote(cabinets,config,dealer),dimensions=dimensions(cabinets,catalog),counts=counts)
+    return dict(cabinets=cabinets,quote=make_quote(cabinets,config,dealer,assemblies=len(cabinets)-joints),dimensions=dimensions(cabinets,catalog,shared_gables=joints),counts=counts,runs=runs)
 
 @api.get('/assemblies/{product_id}',response_model=ProductAssembly)
 async def assembly(product_id:str):
@@ -142,7 +146,20 @@ async def group_preview(request:GroupRequest):
             if a['id'] in reached:
                 reached.update(b['id'] for b in cabinets if adjacent(a,b))
     if len(reached)!=len(cabinets): raise HTTPException(400,'Only neighboring cabinets can be merged')
-    return {**dimensions(cabinets,catalog),'parts_count':sum(len(c['parts']) for c in cabinets),'geometry_fused':False}
+    # The preview answers the question the merge actually asks — what does the run cost
+    # once it is one box — by cutting it both ways and showing the difference.
+    def tally(units):
+        return {k:sum(1 for c in units for p in c['parts'] if p['category']==k) for k in ['panel','hardware','fastener']}
+    fused=deepcopy(cabinets)
+    runs,joints=apply_runs(fused,[ids],catalog)
+    before_total=make_quote(cabinets,request.configuration)['total']
+    after_total=make_quote(fused,request.configuration,assemblies=len(fused)-joints)['total']
+    return {**dimensions(cabinets,catalog,shared_gables=joints),
+            'parts_count':sum(len(c['parts']) for c in fused),
+            'geometry_fused':joints>0,'runs':runs,'carcasses_saved':joints,
+            'before':{'parts_count':sum(len(c['parts']) for c in cabinets),'counts':tally(cabinets),'total':before_total},
+            'after':{'parts_count':sum(len(c['parts']) for c in fused),'counts':tally(fused),'total':after_total},
+            'saving':round(before_total-after_total,2)}
 
 @api.put('/projects/{project_id}',response_model=Project)
 async def save_project(project_id:str,project:Project):

@@ -354,3 +354,117 @@ def build_parts(catalog, width=762.0, kind='base'):
     builder = Builder(catalog)
     construct(builder, width)
     return builder.parts
+
+
+# ---------------------------------------------------------------------- runs
+#
+# Two base units butted together carry four machined gables at the joint: the
+# right gable of the left unit and the left gable of the right unit, bolted face
+# to face. A shop building those two bays as one run deletes both and stands a
+# single shared partition between them. That partition is the shared gable.
+#
+# It is the *only* part of a merge that changes the cut list. Every bay keeps its
+# own bottom, back, stretchers, toe kick, fronts and hardware, so a merge that
+# removed more than this would be quoting parts nobody builds. The quote used to
+# ignore even this, which is why merging two cabinets changed the price by
+# nothing at all.
+
+# `role` is a builder-time hint — it decides edge banding and is deliberately not
+# published in the part records. So a gable is found the way the studio already
+# finds one: by its id and its geometry, which is exactly what the 3D scene does
+# with `part.geometry === 'door'`.
+def _side_gable(parts, side):
+    """The machined gable on one side of a bay, or None when it has none."""
+    for part in parts:
+        if part['id'] == side and part.get('geometry') == 'gable':
+            return part
+    return None
+
+
+# What is bolted to a gable: the confirmats that tie it to the carcass, and the shelf
+# pins it carries. Matched by id and not by parent, because a drawer slide is parented
+# to a gable as well — matching on the parent alone deleted three of a drawer
+# cabinet's runners from the BOM the first time this ran.
+def _gable_fixing(part, side):
+    return part['id'].startswith((f'carcass-{side}-', f'pin-{side}-'))
+
+
+def _joint_fasteners(catalog, pid, x, thickness):
+    """Fixings for a shared partition: confirmats into the carcass, pins on both faces."""
+    b = Builder(catalog)
+    cat = b.cat
+    for face in (-1, 1):
+        for index, y in enumerate([cat.TOE + cat.T * 1.5, cat.H - cat.T / 2]):
+            for k, z in enumerate([-cat.D / 2 + 55, cat.D / 2 - 55]):
+                b.screw(f'{pid}-carcass-{face}-{index}-{k}', [x + face * (thickness / 2 + 1), y, z], [face, 0, 0], pid, 50)
+        for k, z in enumerate([-cat.D / 2 + 50, cat.D / 2 - 37]):
+            b.add(f'{pid}-pin-{face}-{k}', cat.hardware['shelf_pin']['name'], 'fastener',
+                  [x + face * (thickness / 2 + 4), cat.SHELF_Y - cat.T / 2, z], [5, 12, 5], [face, 0, 0],
+                  pid, 'screw', price=cat.hardware['shelf_pin']['price'])
+    return b.parts
+
+
+def fuse_run(catalog, members):
+    """Rebuild a collinear run of bays around one shared partition per joint.
+
+    `members` is ordered left to right along the run and carries `id`, `width`,
+    `offset` (the bay centre's distance along the run from the first bay's centre)
+    and `parts`. Returns `(parts_by_member, report)`; when the run cannot be fused
+    it returns `(None, report)` with the reason, because a corner has no gable to
+    share and a guessed cut list is worse than a refused one.
+    """
+    lists = [list(member['parts']) for member in members]
+    joints = []
+    for index in range(len(members) - 1):
+        left, right = lists[index], lists[index + 1]
+        inner, outer = _side_gable(left, 'right'), _side_gable(right, 'left')
+        if inner is None or outer is None:
+            return None, {'fused': False,
+                          'reason': f'{members[index]["id"]} and {members[index + 1]["id"]} have no gable at the joint to share'}
+        thickness = inner['size'][0]
+        # Midway between the two gables it replaces, expressed in the left bay's frame.
+        centre = ((inner['position'][0] + members[index]['offset'])
+                  + (outer['position'][0] + members[index + 1]['offset'])) / 2
+        x = round(centre - members[index]['offset'], 3)
+        partition = dict(inner)
+        partition.update({
+            'id': f'joint-{index}',
+            'name': catalog.label('run_partition'),
+            'position': [x, inner['position'][1], inner['position'][2]],
+            # It cannot slide out sideways — there are bays on both sides of it. It
+            # drops in from above, before the top rails close the run.
+            'assembly_axis': [0, 1, 0],
+            'parent_id': None,
+            'machining': {key: value for key, value in inner['machining'].items() if key != 'side'},
+        })
+        partition['machining']['joint'] = 'shared run partition'
+        added = [partition] + _joint_fasteners(catalog, partition['id'], x, thickness)
+        dropped = {inner['id'], outer['id']}
+        joint_id = partition['id']
+
+        def survivors(parts, side):
+            """The bay without that gable: the gable and its fixings go, the rest stays.
+
+            Whatever else was mounted on the gable — a drawer runner, on a drawer bay —
+            keeps its place and takes the partition as its parent, because the
+            partition is the panel standing where its gable stood. That parent lives in
+            the neighbouring bay's assembly for one side of the joint, so the explode
+            resolves it to no motion, which is right: the joint panel travels with
+            neither bay.
+            """
+            return [dict(p, parent_id=joint_id) if p.get('parent_id') == side else p
+                    for p in parts if p['id'] != side and not _gable_fixing(p, side)]
+
+        # The outer gables of the run belong to no joint and stay exactly where they are.
+        lists[index] = survivors(left, inner['id']) + added
+        lists[index + 1] = survivors(right, outer['id'])
+        joints.append({'between': [members[index]['id'], members[index + 1]['id']],
+                       'removed': sorted(dropped), 'added': [p['id'] for p in added]})
+    return lists, {
+        'fused': True,
+        'joints': len(joints),
+        'shared_gables': len(joints),
+        'detail': joints,
+        'parts_before': sum(len(member['parts']) for member in members),
+        'parts_after': sum(len(parts) for parts in lists),
+    }
