@@ -1,43 +1,52 @@
-// The layout card hangs 46px above the bottom of the 3D area and grows *upward*
-// when the 'More' disclosure opens. Left unbounded it rises past the vertical
-// centre and stands on the model — a 298px card over the middle of the kitchen
-// at 1024x640, which is exactly where a cabinet gets dragged.
+// The layout card and the explode bar share one column — `.model-controls` — and the
+// column is what is pinned to the bottom edge of the 3D area (bottom:46px) and grows
+// *upward* when the card's one row folds open. Left unbounded it rises past the vertical
+// centre and stands on the model — a 298px card over the middle of the kitchen at
+// 1024x640, which is exactly where a cabinet gets dragged.
 //
-// jsdom computes no layout, so there is nothing here to measure. Instead this
-// reads the real stylesheet and does the arithmetic the browser does, for every
-// height the 3D area takes in the layouts the studio is actually used at. If a
-// rule ever hands the card back more height than the corner it lives in can
-// spare, this fails here instead of on someone's screen.
+// The cap is declared on the column and not on the card. The column is the element that
+// is pinned and the element that grows; a cap on a card inside a flex column, measured
+// against a parent whose height is only a maximum, resolves to nothing — a guard that
+// reads as one and is not. jsdom computes no layout, so there is nothing here to measure.
+// Instead this reads the real stylesheet and does the arithmetic a browser would, for
+// every height the 3D area takes in the layouts the studio is actually used at. If a rule
+// ever hands the column back more height than the corner it lives in can spare, this
+// fails here instead of on someone's screen.
 import fs from 'fs';
 import path from 'path';
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'App.css'), 'utf8');
+// Comments sit between rules and would otherwise be swallowed into the *next* rule's
+// selector by the pattern below — and this file matches selectors exactly now, so a rule
+// that shares its name with a paragraph of prose would measure as nothing at all.
+const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-const CARD_BOTTOM = 46; // .layout-widget{bottom:46px}
-// bottom:46px plus the 27px status bar and a gap: the card never reaches the
-// bottom edge of the window either. The camera dock used to share that edge and
-// is on the right now, so clearing the dock is no longer part of this.
+const COLUMN_BOTTOM = 46; // .model-controls{bottom:46px}
+// bottom:46px plus the 27px status bar and a gap: the column never reaches the bottom
+// edge of the window either.
 const EDGE_CLEARANCE = 98;
-const CENTRE_MARGIN = 16; // how far below the middle of the 3D area the card starts
-const USABLE_CARD = 80; // the bar alone is 51px plus its padding: never go below this
+const CENTRE_MARGIN = 16; // how far below the middle of the 3D area the column starts
+// The layout bar (51px) plus, under it, the explode bar (~44px) and the 14px gap between
+// them. The two strips share this corner now, so the floor has to hold both of them: any
+// lower and the card is squeezed under its own bar.
+const USABLE_COLUMN = 112;
 
 // `.viewport-wrap` heights, from a short landscape phone up to a maximised
 // desktop window: 900x560 and 1024x640 panels included, because that is the
 // shape this went wrong in.
 const VIEW_HEIGHTS = [388, 436, 516, 568, 640, 748, 900];
 
-// Every max-height declared for the card while it is open. The collapsed pill is
-// a label a few characters wide, not the card, so it is excluded — its own rule
-// deliberately unbounds it to keep it hugging its text.
-function openCardCaps() {
+// Every max-height declared for the pinned column, and only for the column itself —
+// `.model-controls>.explode-controls`, for one, sets its own and is not this.
+function columnCaps() {
   const caps = [];
   const block = /([^{}]+)\{([^{}]*)\}/g;
   let match;
-  while ((match = block.exec(css))) {
+  while ((match = block.exec(source))) {
     const applies = match[1]
       .split(',')
       .map(selector => selector.trim())
-      .some(selector => /\.layout-widget(?!\.is-collapsed)/.test(selector));
+      .some(selector => selector === '.model-controls');
     if (!applies) continue;
     const declared = /max-height:([^;}]+)/.exec(match[2]);
     if (declared) caps.push(declared[1].trim());
@@ -85,8 +94,8 @@ function splitTopLevel(value) {
   return parts.map(part => part.trim());
 }
 
-describe('the open layout card', () => {
-  const caps = openCardCaps();
+describe('the column the layout card and the explode bar share', () => {
+  const caps = columnCaps();
 
   test('declares a height cap at all', () => {
     expect(caps.length).toBeGreaterThan(0);
@@ -95,7 +104,7 @@ describe('the open layout card', () => {
   test.each(VIEW_HEIGHTS)('cannot rise into the middle of a %ipx 3D area', (container) => {
     for (const cap of caps) {
       const allowed = height(cap, container);
-      const top = container - CARD_BOTTOM - allowed;
+      const top = container - COLUMN_BOTTOM - allowed;
       expect(top).toBeGreaterThanOrEqual(container / 2 + CENTRE_MARGIN);
     }
   });
@@ -106,19 +115,26 @@ describe('the open layout card', () => {
     }
   });
 
-  // The floor is what keeps the card usable on a view too short to respect the
-  // rule above: the bar and its padding have to survive the cap.
-  test.each(VIEW_HEIGHTS)('keeps a usable card at %ipx', (container) => {
+  // The floor is what keeps the corner usable on a view too short to respect the
+  // rule above: the strips and their gap have to survive the cap.
+  test.each(VIEW_HEIGHTS)('keeps a usable column at %ipx', (container) => {
     for (const cap of caps) {
-      expect(height(cap, container)).toBeGreaterThanOrEqual(USABLE_CARD);
+      expect(height(cap, container)).toBeGreaterThanOrEqual(USABLE_COLUMN);
     }
   });
 
-  // Capping a card is only half of it: whatever it refuses to show has to be
+  // One owner for the rule. A second cap on the card itself would measure against the
+  // column's auto height, do nothing, and look exactly like the thing that was holding
+  // the card out of the middle of the window.
+  test('the card declares no cap of its own, so there is only one owner', () => {
+    expect(source).not.toMatch(/\.layout-widget(?!\.is-collapsed)[^{}]*\{[^{}]*max-height/);
+  });
+
+  // Capping a column is only half of it: whatever it refuses to show has to be
   // reachable, and the bar with Move / Rotate / Merge / Done — the controls the
   // card exists for — must not be the part that scrolls away.
   test('scrolls the extras, and never the bar', () => {
-    expect(css).toMatch(/\.layout-widget:not\(\.is-collapsed\) \.layout-extra\{[^}]*overflow-y:auto/);
-    expect(css).not.toMatch(/\.layout-widget:not\(\.is-collapsed\) \.layout-bar\{[^}]*overflow/);
+    expect(source).toMatch(/\.layout-widget:not\(\.is-collapsed\) \.layout-extra\{[^}]*overflow-y:auto/);
+    expect(source).not.toMatch(/\.layout-widget:not\(\.is-collapsed\) \.layout-bar\{[^}]*overflow/);
   });
 });

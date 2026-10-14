@@ -6,7 +6,7 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '../components/
 import {useStudio} from './StudioContext';
 import {Configurator} from './Controls';
 import {Viewport} from './Viewport';
-import {Inspector,AssemblyTree,ExplodeControls} from './Inspector';
+import {Inspector,AssemblyTree} from './Inspector';
 import QuotePage from './QuotePage';
 import BrandPage from './BrandPage';
 import {DealerBadge} from './DealerPanel';
@@ -36,7 +36,7 @@ export default function Studio(){
   return <div className={`studio-app ${presentation?'presentation':''}`} data-testid="studio-app"><Header/><ProjectBar/>{error&&!errorDismissed&&<div className="connection-error" role="alert" data-testid="connection-error">{error}<button data-testid="retry-connection" onClick={retry}>Retry</button><button type="button" className="panel-dismiss error-dismiss" data-testid="error-dismiss" title="Hide this message" aria-label="Hide this message" onClick={()=>setErrorDismissed(true)}><X size={14}/></button></div>}
     <div className="workspace"><Rail/>{!scene?<div className="studio-loading" data-testid="studio-loading"><Box size={38} strokeWidth={1}/><span>Preparing your studio</span><i/></div>:documentPage?(location.pathname==='/quote'?<QuotePage/>:<BrandPage/>):<>
       <aside className={`left-panel ${mobilePanel==='config'?'mobile-open':''}`}><button className="close-mobile-panel" aria-label="Close design panel" data-testid="close-config-panel" onClick={()=>setMobilePanel(null)}><X size={19}/></button>{assembly?<AssemblyTree/>:<Configurator/>}</aside>
-      <div className="viewport-wrap"><Viewport assembly={assembly}/>{assembly&&<ExplodeControls/>}</div>
+      <div className="viewport-wrap"><Viewport assembly={assembly}/></div>
       <div className={`right-panel ${mobilePanel==='inspector'?'mobile-open':''}`}><button className="close-mobile-panel" aria-label="Close inspector" data-testid="close-inspector-panel" onClick={()=>setMobilePanel(null)}><X size={19}/></button><Inspector assembly={assembly}/></div>
       {mobilePanel&&<button className="mobile-panel-backdrop" aria-label="Dismiss panel" data-testid="mobile-panel-backdrop" onClick={()=>setMobilePanel(null)}/>}
     </>}</div>

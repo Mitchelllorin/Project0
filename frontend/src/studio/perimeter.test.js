@@ -52,7 +52,7 @@ function resolved(selector, property) {
 // Anything that used to float over the model. Each one must be pinned to an
 // edge: a `50%` left with a matching transform is the definition of "anchored
 // to the middle", which is the thing this view exists without.
-const OVERLAYS = ['.view-dock', '.layout-widget', '.explode-controls', '.connection-error'];
+const OVERLAYS = ['.view-dock', '.model-controls', '.layout-widget', '.explode-controls', '.connection-error'];
 
 describe('the model owns the window', () => {
   test('the 3D area fills the workspace instead of sitting between two columns', () => {
@@ -93,8 +93,10 @@ describe('the model owns the window', () => {
       declarations(selector).filter(d => d.property === property).map(d => d.value);
 
     expect(declares('.view-dock', 'right')).toEqual(expect.arrayContaining([expect.stringContaining('--right-w')]));
-    expect(declares('.layout-widget', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
-    expect(declares('.explode-controls', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
+    // The layout card and the explode bar share one column, and the column is what
+    // is pinned: the strips inside it are ordinary stacked items, which is how the two
+    // are kept from being drawn over each other.
+    expect(declares('.model-controls', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
     expect(declares('.viewport-heading', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
     expect(declares('.viewport-top-tools', 'right')).toEqual(expect.arrayContaining([expect.stringContaining('--right-w')]));
     expect(declares('.viewport-corner-label', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
@@ -105,7 +107,7 @@ describe('the model owns the window', () => {
   // offset past the *rail*, which put the caption, the corner label and the
   // layout card on top of the left column — type over type. They clear the
   // column, not just the rail, and this is the rule that says so.
-  test.each(['.viewport-heading', '.viewport-corner-label', '.layout-widget', '.explode-controls'])(
+  test.each(['.viewport-heading', '.viewport-corner-label', '.model-controls'])(
     '%s starts where the left column ends, not where the rail does',
     selector => {
       const lefts = declarations(selector).filter(d => d.property === 'left').map(d => d.value);
@@ -123,6 +125,21 @@ describe('the perimeter is type, not panels', () => {
     expect(resolved(selector, 'background')).toBe('none');
     expect(resolved(selector, 'border')).toBe('0');
     expect(resolved(selector, 'backdrop-filter')).toBe('none');
+  });
+
+  // The column is a container, not a surface: it is invisible type over the scene, so it
+  // may not grow a background of its own. The strips inside it are held by the reset
+  // above (`background:none!important`), and this is what says the column is subject to
+  // the same rule rather than being the one element the styling quietly let through.
+  test('the column that holds the two strips is not a panel either', () => {
+    expect(resolved('.model-controls', 'background')).toBeNull();
+    expect(resolved('.model-controls', 'border')).toBeNull();
+  });
+
+  test('the strips give up their corners to that column', () => {
+    // Two strips, one corner: neither may claim a position of its own inside it, or the
+    // pair could be drawn on top of one another in the same spot.
+    expect(css).toMatch(/\.model-controls>\.layout-widget,\.model-controls>\.explode-controls\{[^}]*position:static/);
   });
 
   test('the words carry their own contrast, since no background does it for them', () => {

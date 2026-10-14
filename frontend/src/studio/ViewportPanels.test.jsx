@@ -13,7 +13,7 @@ const mockStudio = {
   config: {units: 'mm', finish: 'oak', style: 'slab', lighting: 'daylight', layout: 'l-shape',
     dimensions: true, rack: 'none', groups: [], custom: false, quote: {show_prices: true}},
   update: jest.fn(), camera: {view: 'perspective', tick: 0}, setCamera: jest.fn(),
-  presentation: false, selected: ['B01'], busy: false, explode: 0, arrange: false,
+  presentation: false, selected: ['B01'], busy: false, explode: 0, setExplode: jest.fn(), arrange: false,
   doorsOpen: false, toggleDoors: jest.fn(), setArrange: jest.fn(),
   selectCabinet: jest.fn(), setInspected: jest.fn(),
   brand: {name: 'Northline', subtitle: '', accent: '#dca55e', logo_url: ''},
@@ -28,6 +28,9 @@ jest.mock('./Cabinet3D', () => ({Cabinet3D: () => null}));
 jest.mock('./Room3D', () => ({Room3D: () => null}));
 jest.mock('react-router-dom', () => ({useNavigate: () => jest.fn()}));
 jest.mock('./LayoutWidget', () => ({LayoutWidget: () => <div data-testid="layout-widget-stub"/>}));
+// Inspector.jsx co-locates the part geometry and the assembly canvas; the explode bar it
+// also exports uses neither, and `three` does not load under jsdom.
+jest.mock('./PartGeometry', () => ({Panel: () => null, PartMesh: () => null, Part: () => null}));
 
 beforeAll(() => {globalThis.IS_REACT_ACT_ENVIRONMENT = true;});
 
@@ -88,5 +91,49 @@ describe('the panels over the model', () => {
       expect(byTestId(c, panel.open)).toBeNull();
       expect(byTestId(c, panel.expand)).not.toBeNull();
     });
+  });
+});
+
+// The workspace is the one place the kitchen is worked on, so the two controls that
+// change it — how it is laid out, and how far a cabinet comes apart — are in the same
+// corner of it rather than one here and one on a page of its own.
+describe('the controls in the workspace corner', () => {
+  afterEach(() => {
+    mockStudio.arrange = false;
+    mockStudio.scene.cabinets = [];
+  });
+
+  it('offers the explode over the workspace itself, not only in the assembly explorer', () => {
+    const c = render();
+    expect(byTestId(c, 'explode-controls')).not.toBeNull();
+    expect(byTestId(c, 'explode-slider')).not.toBeNull();
+    // ...and the layout card is not summoned until the kitchen is being laid out.
+    expect(byTestId(c, 'layout-widget-stub')).toBeNull();
+  });
+
+  it('stacks the layout card and the explode bar in one column, so neither can cover the other', () => {
+    mockStudio.arrange = true;
+    const c = render();
+    const column = byTestId(c, 'model-controls');
+    expect(column).not.toBeNull();
+    expect(column.contains(byTestId(c, 'layout-widget-stub'))).toBe(true);
+    expect(column.contains(byTestId(c, 'explode-controls'))).toBe(true);
+  });
+
+  it('names the cabinet the explode takes apart, and does it where the run is visible', () => {
+    mockStudio.scene.cabinets = [{id: 'B01', name: 'Base 30', kind: 'base', width: 762, depth: 609.6, height: 876.3, position: [0, 0, 304.8], rotation: 0}];
+    const c = render();
+    expect(byTestId(c, 'explode-title').textContent).toContain('Explode B01 in place');
+  });
+
+  // The size of the thing in hand, read next to the size of the whole run and at the model
+  // rather than in a column of type — you are deciding it against the cabinets beside it.
+  it('reads the selected cabinet\u2019s own size at the model', () => {
+    mockStudio.scene.cabinets = [{id: 'B01', name: 'Base 30', kind: 'base', width: 762, depth: 609.6, height: 876.3, position: [0, 0, 304.8], rotation: 0}];
+    const c = render();
+    expect(byTestId(c, 'scene-selection-dimension').textContent).toBe(' · B01 762 mm');
+    expect(byTestId(c, 'viewport-layout').contains(byTestId(c, 'scene-selection-dimension'))).toBe(true);
+    // Beside the figure for the run as a whole, in the same corner readout.
+    expect(byTestId(c, 'scene-width-dimension').textContent).toBe(' · 3,048 mm');
   });
 });

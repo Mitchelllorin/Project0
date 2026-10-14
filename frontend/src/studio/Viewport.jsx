@@ -4,7 +4,9 @@ import {OrbitControls,Environment,Lightformer,ContactShadows,Line,TransformContr
 import {Box as BoxIcon,Camera,Sun,Moon,Plus,Minus,Focus,Layers,X,DoorOpen,Move,Info,SlidersHorizontal} from 'lucide-react';
 import {PanelDismiss,PanelPill,usePanel} from './Panels';
 import {useStudio} from './StudioContext';
+import {ExplodeControls} from './Inspector';
 import {LayoutWidget} from './LayoutWidget';
+import {explodeAmount,explodeScope} from './explodeScope';
 import {TRANSLATION_SNAP_M,ROTATION_SNAP_RAD,stretchedWidth,stretchable} from './layoutWidget';
 import {doorsOpenFor} from './doors';
 import {useNavigate} from 'react-router-dom';
@@ -174,7 +176,10 @@ function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
       {chosen.map(c=>{
         // Touching a cabinet in the model is how you ask to move it. Selecting from a
         // panel list is a different intent, so that path leaves the layout card alone.
-        const props={cabinet:c,config,selected:selected.includes(c.id),amount:assembly?explode:0,assembly,inspected,onSelect:id=>{selectCabinet(id);if(!assembly)setArrange(true);},onInspect:setInspected,open:doorsOpenFor(c.id,{doorsOpen,selected,assembly,picked}),onOpenAssembly:()=>onOpenAssembly&&onOpenAssembly(c.id)};
+        // In the workspace the selected cabinet comes apart in place, still standing in
+        // its run; in the explorer everything on screen does. explodeScope.js holds that
+        // difference and its tests.
+        const props={cabinet:c,config,selected:selected.includes(c.id),amount:explodeAmount(c.id,{selected,assembly,explode}),assembly,inspected,onSelect:id=>{selectCabinet(id);if(!assembly)setArrange(true);},onInspect:setInspected,open:doorsOpenFor(c.id,{doorsOpen,selected,assembly,picked}),onOpenAssembly:()=>onOpenAssembly&&onOpenAssembly(c.id)};
         if(!arrange||!selected.includes(c.id)||c.id!==selected[0])return <Cabinet3D key={c.id} {...props}/>;
         return <React.Fragment key={c.id}>
           <TransformControls mode={gizmoMode} translationSnap={TRANSLATION_SNAP_M} rotationSnap={ROTATION_SNAP_RAD} size={.75} onMouseUp={()=>{const o=gizmo.current;if(o)moveCabinet(c.id,o.position.x*1000,o.position.z*1000,o.rotation.y);}}>
@@ -184,7 +189,7 @@ function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
         </React.Fragment>;
       })}
       {!assembly&&<Room3D config={config} cabinets={scene.cabinets} onCeilingToggle={()=>update({ceiling:!config.ceiling})} onRackDismiss={()=>update({rack:'none'})}/>}
-      {assembly&&explode>.02&&<AssemblyVectors cabinets={chosen} amount={explode}/>}
+      {explode>.02&&<AssemblyVectors cabinets={explodeScope({cabinets:chosen,selected,assembly})} amount={explode}/>}
       {!assembly&&!arrange&&selected.length>1&&(()=>{const sel=scene.cabinets.filter(c=>selected.includes(c.id));if(sel.length<2)return null;const xs=sel.flatMap(c=>[-c.width/2,c.width/2].map(h=>c.position[0]+h*Math.abs(Math.cos(c.rotation))));const min=Math.min(...xs)/1000,max=Math.max(...xs)/1000,z=Math.max(...sel.map(c=>c.position[2]))/1000+.7;return <Line points={[[min,.05,z],[max,.05,z]]} color="#c8a15c" lineWidth={1.5}/>;})()}
     </group>
     {assembly&&<><gridHelper args={[8,40,'#65736b','#454e47']} position={[0,-.17,0]}/><ContactShadows position={[0,-.16,0]} opacity={.32} scale={8} blur={budget.contactShadowBlur} far={3} frames={1}/></>}
@@ -212,8 +217,16 @@ export function Viewport({assembly=false}) {
       <div className="viewport-top-tools" data-testid="viewport-tools"><PanelDismiss label="the view tools" testId="tools-dismiss" className="tools-dismiss" onDismiss={tools.dismiss}/><button data-testid="lighting-toggle" title="Switch lighting" onClick={()=>update({lighting:config.lighting==='daylight'?'evening':'daylight'})}>{config.lighting==='daylight'?<Sun size={15}/>:<Moon size={15}/>}<span>{config.lighting==='daylight'?'Daylight':'Evening'}</span></button>{!assembly&&<button data-testid="doors-toggle" title={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} aria-label={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} onClick={toggleDoors}><DoorOpen size={15}/><span>{doorsOpen?"Close doors":"Open doors"}</span></button>}{!assembly&&<button data-testid="arrange-toggle" className={arrange?"active":""} title="Arrange cabinets freely" aria-label="Arrange cabinets" onClick={()=>setArrange(!arrange)}><Move size={15}/><span>{arrange?"Arranging":"Arrange"}</span></button>}{!assembly&&<button data-testid="open-assembly" disabled={!selected.length} title={selected.length?"Explore this cabinet's assembly":"Select a cabinet first"} aria-label="Explore assembly" onClick={()=>selected.length&&navigate('/assembly')}><Layers size={15}/><span>Assembly</span></button>}<span className="render-quality" data-testid="render-quality"><span/> {busy?'Updating':'Live render'}</span>{config.rack!=='none'&&<button data-testid="dismiss-pot-rack" title="Remove pot rack" aria-label="Remove pot rack" onClick={()=>update({rack:'none'})}><span>{config.rack.charAt(0).toUpperCase()+config.rack.slice(1)} pot rack</span><X size={14}/></button>}</div>
       :<div className="viewport-top-tools" data-testid="viewport-tools-collapsed"><PanelPill label="the view tools" text="View tools" icon={<SlidersHorizontal size={13}/>} testId="tools-expand" onRestore={tools.restore}/></div>}
     <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
-    {!assembly&&arrange&&<LayoutWidget/>}
-    <div className="viewport-corner-label" data-testid="viewport-layout"><BoxIcon size={14}/>{assembly?'COMPONENT VIEW':{ 'l-shape':'L-SHAPED / CONCEPT 01',straight:'LINEAR / CONCEPT 02',galley:'GALLEY / CONCEPT 03'}[config.layout]}{!assembly&&config.dimensions&&<span data-testid="scene-width-dimension"> · {formatDimension(scene.dimensions.footprint_width,config.units)}</span>}</div>
+    {/* One column, one corner: the card that lays the kitchen out and the bar that opens
+        a cabinet up are the same workspace's controls, so they are stacked in one place
+        and cannot be drawn over each other. The explode is here in the design studio too,
+        not just in the explorer — you decide how far to take it with the rest of the run
+        still standing next to it. */}
+    <div className="model-controls" data-testid="model-controls">
+      {!assembly&&arrange&&<LayoutWidget/>}
+      <ExplodeControls subject={assembly?null:model?.id}/>
+    </div>
+    <div className="viewport-corner-label" data-testid="viewport-layout"><BoxIcon size={14}/>{assembly?'COMPONENT VIEW':{ 'l-shape':'L-SHAPED / CONCEPT 01',straight:'LINEAR / CONCEPT 02',galley:'GALLEY / CONCEPT 03'}[config.layout]}{!assembly&&config.dimensions&&<span data-testid="scene-width-dimension"> · {formatDimension(scene.dimensions.footprint_width,config.units)}</span>}{!assembly&&model&&<span data-testid="scene-selection-dimension"> · {model.id} {formatDimension(model.width,config.units)}</span>}</div>
     {dock.open?
       <div className="view-dock" data-testid="camera-toolbar">
       <div className="view-segment">{[['perspective','3D'],['front','Front'],['top','Top']].map(([view,label])=><button key={view} data-testid={`camera-${view}`} className={(camera.view===view||view==='perspective'&&!['front','top'].includes(camera.view))?'active':''} onClick={()=>command(view)}>{label}</button>)}</div>

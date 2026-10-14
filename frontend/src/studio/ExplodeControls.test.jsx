@@ -24,11 +24,11 @@ beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 });
 
-function render() {
+function render(props = {}) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
-  act(() => root.render(<ExplodeControls/>));
+  act(() => root.render(<ExplodeControls {...props}/>));
   return container;
 }
 
@@ -106,6 +106,25 @@ describe('ExplodeControls', () => {
     expect(byTestId(c, 'explode-slider-mini')).toBeNull();
     act(() => byTestId(c, 'explode-dismiss').click());
     expect(byTestId(c, 'explode-slider')).toBeNull();
+  });
+
+  // The same strip is drawn over the workspace and over the assembly explorer. In the
+  // workspace it takes apart one cabinet where it stands, so it says which one; in the
+  // explorer the selection *is* the view, so the plain name is the honest one.
+  it('names the cabinet it takes apart when it is over the workspace', () => {
+    const c = render({subject: 'B01'});
+    expect(byTestId(c, 'explode-title').textContent).toContain('Explode B01 in place');
+  });
+
+  it('keeps the plain name where the assembly is the whole view', () => {
+    const c = render();
+    expect(byTestId(c, 'explode-title').textContent).toContain('Exploded assembly');
+  });
+
+  it('carries that name into the pill, so putting it away does not rename it', () => {
+    const c = render({subject: 'B01'});
+    act(() => byTestId(c, 'explode-dismiss').click());
+    expect(byTestId(c, 'explode-expand').textContent).toContain('Explode B01 in place');
   });
 
   it('offers the named stages that drive the explode amount', () => {
