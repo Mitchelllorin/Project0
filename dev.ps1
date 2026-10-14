@@ -2,6 +2,8 @@
 Start the whole stack locally on Windows: FastAPI (8001) + React (3000).
 
   .\dev.ps1            install anything missing, then start both servers, each in its own window
+  .\dev.ps1 launch     what the desktop icon runs: start whatever is not up, wait, open it
+  .\dev.ps1 shortcut   put that icon on the desktop (or repair one that stopped working)
   .\dev.ps1 check      report what this machine has and what is missing - changes nothing
   .\dev.ps1 install    install both dependency sets, start nothing
 
@@ -18,7 +20,7 @@ DEVELOPMENT.md has the manual version of every step this script performs.
 #>
 
 [CmdletBinding()]
-param([ValidateSet('start', 'check', 'install')][string]$Command = 'start')
+param([ValidateSet('start', 'launch', 'shortcut', 'check', 'install')][string]$Command = 'start')
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -173,6 +175,38 @@ function Install-Frontend {
   finally { Pop-Location }
 }
 
+# Each half of the stack in its own window, as before. Split out of Start-Stack so `launch`
+# can start one half without starting the other.
+function Start-BackendWindow {
+  $python = Join-Path $root 'backend\.venv\Scripts\python.exe'
+  $backendCmd = "`$Host.UI.RawUI.WindowTitle = 'Kitchen Studio - API (8001)'; Set-Location '$root\backend'; & '$python' -m uvicorn server:app --reload --port $BackendPort"
+  Start-Process powershell -ArgumentList @('-NoExit', '-Command', $backendCmd) | Out-Null
+}
+
+function Start-FrontendWindow {
+  $yarn = Get-YarnCommand
+  $frontendCmd = "`$Host.UI.RawUI.WindowTitle = 'Kitchen Studio - studio (3000)'; Set-Location '$root\frontend'; `$env:BROWSER = 'none'; $yarn start"
+  Start-Process powershell -ArgumentList @('-NoExit', '-Command', $frontendCmd) | Out-Null
+}
+
+# A port that is open is not a studio. The dev server binds 3000 before it has compiled
+# anything, so what is waited for is an answer from the page itself - otherwise the browser
+# opens on "compiling..." and, on a first run after a fresh checkout, that is what someone
+# double-clicking an icon would see and call broken.
+function Wait-Studio([int]$TimeoutSeconds = 240) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    if (Test-PortBusy $FrontendPort) {
+      try {
+        $probe = Invoke-WebRequest -UseBasicParsing -Uri "http://localhost:$FrontendPort" -TimeoutSec 5
+        if ($probe.StatusCode -eq 200) { return $true }
+      } catch { }
+    }
+    Start-Sleep -Seconds 2
+  }
+  return $false
+}
+
 function Start-Stack {
   if (-not (Test-Path (Join-Path $root 'backend\.venv'))) { Install-Backend }
   if (-not (Test-Path (Join-Path $root 'frontend\node_modules'))) { Install-Frontend }
@@ -180,20 +214,14 @@ function Start-Stack {
   if (Test-PortBusy $BackendPort) { Write-Host "!! port $BackendPort is already in use - close whatever holds it first" -ForegroundColor Yellow }
   if (Test-PortBusy $FrontendPort) { Write-Host "!! port $FrontendPort is already in use - close whatever holds it first" -ForegroundColor Yellow }
 
-  $python = Join-Path $root 'backend\.venv\Scripts\python.exe'
-  $yarn = Get-YarnCommand
-
-  $backendCmd = "`$Host.UI.RawUI.WindowTitle = 'Kitchen Studio - API (8001)'; Set-Location '$root\backend'; & '$python' -m uvicorn server:app --reload --port $BackendPort"
-  $frontendCmd = "`$Host.UI.RawUI.WindowTitle = 'Kitchen Studio - studio (3000)'; Set-Location '$root\frontend'; `$env:BROWSER = 'none'; $yarn start"
-
-  Start-Process powershell -ArgumentList @('-NoExit', '-Command', $backendCmd) | Out-Null
+  Start-BackendWindow
 
   Write-Host "==> API      http://localhost:$BackendPort"
   $url = Get-MongoUrl
   if ($url) { Write-Host '    database configured - designs can be saved' }
   else { Write-Host '    no MONGO_URL - the studio renders fine; saving is disabled' -ForegroundColor Yellow }
 
-  Start-Process powershell -ArgumentList @('-NoExit', '-Command', $frontendCmd) | Out-Null
+  Start-FrontendWindow
   Write-Host "==> studio   http://localhost:$FrontendPort    <-- open this one"
 
   Write-Host ''
@@ -201,8 +229,62 @@ function Start-Stack {
   Write-Host 'Closing those two windows stops the stack.'
 }
 
+# What the desktop icon runs (via studio.cmd). It differs from `start` in the two ways that
+# made a shortcut unreliable:
+#
+#   it starts only what is *not* already listening, so a second double-click does not fight
+#     the first for the ports, and it never matters whether the stack was already up;
+#   it waits for the studio to answer and then opens the browser itself, so one double-click
+#     is the whole gesture, and the address opened is one the browser is allowed to run the
+#     studio on (localhost: a secure context, and therefore no restriction on the id the
+#     studio gives a new design - see frontend\src\studio\ids.js).
+function Launch {
+  if (-not (Test-Path (Join-Path $root 'backend\.venv'))) { Install-Backend }
+  if (-not (Test-Path (Join-Path $root 'frontend\node_modules'))) { Install-Frontend }
+
+  if (Test-PortBusy $BackendPort) { Write-Host "==> API      already up on $BackendPort" }
+  else { Start-BackendWindow; Write-Host "==> API      starting on http://localhost:$BackendPort" }
+
+  if (Test-PortBusy $FrontendPort) { Write-Host "==> studio   already up on $FrontendPort" }
+  else { Start-FrontendWindow; Write-Host "==> studio   starting on http://localhost:$FrontendPort" }
+
+  Write-Host '==> waiting for the studio to answer (a first run compiles for a minute or two)'
+  if (-not (Wait-Studio)) {
+    Write-Host '!! the studio did not answer. Its own window ("Kitchen Studio - studio") has' -ForegroundColor Red
+    Write-Host '   the reason - usually a compile error. .\dev.ps1 check reports what is missing.' -ForegroundColor Red
+    exit 1
+  }
+
+  Write-Host "==> opening http://localhost:$FrontendPort"
+  Start-Process "http://localhost:$FrontendPort"
+}
+
+# The icon itself. A shortcut to a .ps1 opens the file in an editor on most machines, which
+# is why studio.cmd exists to be the target.
+function Install-Shortcut {
+  $cmd = Join-Path $root 'studio.cmd'
+  if (-not (Test-Path $cmd)) { throw "studio.cmd is missing from $root - the shortcut would point at nothing." }
+
+  $link = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Kitchen Studio.lnk'
+  $icon = Join-Path $root 'studio.ico'
+  if (-not (Test-Path $icon)) { $icon = "$env:SystemRoot\System32\SHELL32.dll,14" }
+
+  $shell = New-Object -ComObject WScript.Shell
+  $shortcut = $shell.CreateShortcut($link)
+  $shortcut.TargetPath = $cmd
+  $shortcut.WorkingDirectory = $root
+  $shortcut.IconLocation = $icon
+  $shortcut.Description = 'Start the kitchen studio and open it'
+  $shortcut.Save()
+
+  Write-Host "==> desktop icon: $link"
+  Write-Host '    Double-click it. Nothing has to be running first, and running it twice is harmless.'
+}
+
 switch ($Command) {
   'check' { Show-Check }
+  'launch' { Launch }
+  'shortcut' { Install-Shortcut }
   'install' {
     Install-Backend
     Install-Frontend

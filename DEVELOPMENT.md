@@ -108,6 +108,35 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1
 Neither script is a prerequisite for anything; both do the same steps as § 2 and § 3 by hand.
 `check` changes nothing; it is the fastest way to find out why a step failed.
 
+## The desktop icon
+
+The studio is meant to be one double-click away, and `studio.cmd` is what makes that true:
+
+```powershell
+.\dev.ps1 shortcut     # puts "Kitchen Studio" on the desktop, or repairs an existing one
+```
+
+Double-clicking it starts whichever half of the stack is **not** already listening, waits for
+the studio to actually answer on 3000 — a bound port is not a compile that has finished, and
+opening the browser onto "compiling…" is what a broken-looking icon is — and then opens it.
+Running it twice is harmless: the second run only opens the window. The console window closes
+itself on success and stays open, with the reason on screen, on failure.
+
+If you already have a shortcut, point it at `studio.cmd` in this folder. A shortcut to
+`dev.ps1` opens the script in an editor instead of running it, which looks exactly like "it
+doesn't run when I hit the icon".
+
+Two choices in the launcher are deliberate. It opens **http://localhost:3000**, not a machine
+name or a hosts-file alias, because a plain-http address that is not localhost is not a
+[secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts) and
+the browser withholds `crypto.randomUUID` there — the studio now works without it
+(`src/studio/ids.js`), and its crash screen catches anything else that throws before the
+first paint, but localhost is where it is on its best behaviour. And it starts the API
+itself, so the studio does not open onto *"The studio could not reach the assembly service"*.
+
+On macOS or Linux there is nothing to install: `./dev.sh` prints the address to open, and an
+alias or a `.desktop` entry pointing at this checkout's `dev.sh` does the same job.
+
 ## Prove your setup works
 
 ```bash

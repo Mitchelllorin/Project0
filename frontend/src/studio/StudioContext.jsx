@@ -8,11 +8,12 @@ import { encodeState, readShareHash } from './share';
 import { buildTimeDeployment, fetchDeployment, initialBrand, adoptServerBrand } from './deployment';
 import { API_BASE } from './api';
 import { readDealerCode, rememberDealerCode, forgetDealerCode, dealerHeaders, fetchDealerSession } from './dealer';
+import { newId } from './ids';
 
 // The base is resolved rather than taken raw: a baked-in localhost is the browser's
 // own machine, which is only right when the studio is being served from it (see api.js).
 export const API = `${API_BASE}/api`;
-export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',widths:{},groups:[],custom:false,placements:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65,resale_discount:0}};
+export const DEFAULT_CONFIG = {layout:'l-shape',finish:'oak',style:'slab',countertop:'calacatta',surface:'honed',backsplash:'tile',hardware:'brass',island:true,ceiling:false,ceiling_opacity:.08,rack:'none',dimensions:true,units:'mm',lighting:'daylight',studs:false,stud_spacing:600,widths:{},groups:[],custom:false,placements:[],quote:{show_prices:true,include_hardware:true,include_labor:true,include_finish:true,labor_rate:65,resale_discount:0}};
 // This install's own identity, baked in at build time. A visitor's saved or shared
 // branding overrides it; the server's copy (fetched below) can re-brand a running
 // deployment without a rebuild.
@@ -30,7 +31,10 @@ export function StudioProvider({children}) {
   // while the state it is reading is still being committed.
   const configRef=useRef(config);configRef.current=config;
   const [brand,setBrand]=useState(()=>initialBrand(initial.current?.brand));
-  const [projectId]=useState(initial.current?.id||crypto.randomUUID());
+  // Lazily, and through ids.js: `crypto.randomUUID()` is not defined outside a secure
+  // context, and calling it here — during the first render of the provider — took the
+  // whole studio down before it painted on any plain-http address that was not localhost.
+  const [projectId]=useState(()=>initial.current?.id||newId());
   // The dealer this browser is signed in as, and the code that earns it. The code lives in
   // the ref rather than the state the whole tree re-renders on, and never anywhere it could
   // travel with the design.
