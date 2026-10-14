@@ -102,3 +102,7 @@ frontend/node_modules/.cache/default-development/10.pack
 # Keep the committed example env templates (they match the ".env.*" rule above).
 !.env.example
 !.env.prod.example
+
+# tools/make-studio-icon.py writes a PNG next to the .ico so the mark can be eyeballed;
+# studio.ico is the artefact, the preview is working output.
+studio-icon-preview.png
