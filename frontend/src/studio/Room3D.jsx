@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import {Box} from './PartGeometry';
 import {panelProps,surfaceProps,woodTexture} from './Materials';
 import {RepeatedBoxes} from './RepeatedBoxes';
+import {StudWall} from './StudWall';
+import {backWallWidth} from './studs';
 
 function Tube({points,radius=.013,color='#b9b9af'}) {
   const curve=useMemo(()=>new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p))),[points]);
@@ -39,12 +41,18 @@ export function PotRack({type,onDismiss}) {
 }
 export function Room3D({config,cabinets,onCeilingToggle,onRackDismiss}) {
   const corner=cabinets.find(c=>c.kind==='corner');const back=cabinets.filter(c=>['B01','B02','B03'].includes(c.id));
-  const backWidth=corner?corner.position[0]/1000+corner.width/2000:Math.max(...cabinets.filter(c=>c.position[2]<1000).map(c=>c.position[0]/1000+c.width/2000));
-  const wall={color:config.lighting==='daylight'?'#cecec4':'#9e9a8b',roughness:.95};
-  const tileMat={color:'#dadfd8',roughness:.4};
+  const backWidth=backWallWidth(cabinets);
+  // Showing the studs means hiding the layer that covers them, which is the drywall and
+  // everything painted on it. They are ghosted rather than removed so the room still reads
+  // as a room, and they keep casting their shadows, so the kitchen is lit the same way in
+  // both modes and the only thing that changes is what you can see through.
+  const ghost=config.studs?{transparent:true,opacity:.09}:null;
+  const wall={color:config.lighting==='daylight'?'#cecec4':'#9e9a8b',roughness:.95,...(ghost||{})};
+  const tileMat={color:'#dadfd8',roughness:.4,...(ghost||{})};
   const upperMat=panelProps(config,'finish');
   const sink=back[1];const hob=back[0];
   return <group>
+    {config.studs&&<StudWall cabinets={cabinets} layout={config.layout} centres={config.stud_spacing}/>}
     <Box size={[backWidth+.65,.065,3.75]} position={[backWidth/2-.15,-.035,1.45]} material={{color:'#b8b9b0',roughness:.95}}/>
     {Array.from({length:9},(_,i)=><Line key={`floor-x${i}`} points={[[-.47,.001,i*.44-.4],[backWidth+.16,.001,i*.44-.4]]} color="#a9aca4" lineWidth={.45}/>)}
     {Array.from({length:10},(_,i)=><Line key={`floor-z${i}`} points={[[i*.44-.45,.001,-.4],[i*.44-.45,.001,3.3]]} color="#a9aca4" lineWidth={.45}/>)}
@@ -54,7 +62,7 @@ export function Room3D({config,cabinets,onCeilingToggle,onRackDismiss}) {
       <RepeatedBoxes instances={Array.from({length:5},(_,row)=>Array.from({length:Math.floor((backWidth+.3)/.205)},(_,col)=>({size:[.2,.096,.012],position:[-.12+col*.205+(row%2*.04),.965+row*.1,-.019]}))).flat()} material={tileMat}/>
       {config.layout==='l-shape'&&<RepeatedBoxes instances={Array.from({length:5},(_,row)=>Array.from({length:11},(_,col)=>({size:[.012,.096,.2],position:[backWidth-.005,.965+row*.1,.14+col*.205]}))).flat()} material={tileMat}/>}
     </>}
-    {config.backsplash==='marble'&&<><Box size={[backWidth,.6,.02]} position={[backWidth/2,1.2,-.016]} material={surfaceProps({...config,countertop:'calacatta'})}/>{config.layout==='l-shape'&&<Box size={[.02,.6,2.35]} position={[backWidth-.005,1.2,1.175]} material={surfaceProps({...config,countertop:'calacatta'})}/>}</>}
+    {config.backsplash==='marble'&&<><Box size={[backWidth,.6,.02]} position={[backWidth/2,1.2,-.016]} material={{...surfaceProps({...config,countertop:'calacatta'}),...(ghost||{})}}/>{config.layout==='l-shape'&&<Box size={[.02,.6,2.35]} position={[backWidth-.005,1.2,1.175]} material={{...surfaceProps({...config,countertop:'calacatta'}),...(ghost||{})}}/>}</>}
     {back.slice(1).map((c,i)=><group key={c.id} position={[c.position[0]/1000,1.99,.17]}><Box size={[c.width/1000-.006,.76,.34]} material={upperMat}/>{[-1,1].map(s=><Box key={s} size={[c.width/2000-.004,.755,.019]} position={[s*c.width/4000,0,.181]} material={upperMat}/>)}<Box size={[c.width/1000-.02,.009,.28]} position={[0,-.386,0]} material={{color:'#fff0c5',emissive:'#ffe1a0',emissiveIntensity:.8}}/></group>)}
     {hob&&<group position={[hob.position[0]/1000,0,0]}><Box size={[.55,.009,.46]} position={[0,.917,.31]} material={{color:'#222724',metalness:.3,roughness:.17}}/>{[-1,1].flatMap(x=>[-1,1].map(z=><mesh key={`${x}${z}`} position={[x*.135,.924,.31+z*.11]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[.071,.073,32]}/><meshStandardMaterial color="#727c73" roughness={.4}/></mesh>))}<Box size={[.61,.095,.47]} position={[0,1.77,.2]} material={{color:'#4b5048',metalness:.6,roughness:.4}}/><Box size={[.31,.69,.26]} position={[0,2.15,.095]} material={{color:'#4b5048',metalness:.6,roughness:.4}}/></group>}
     {sink&&<group position={[sink.position[0]/1000,.916,.31]}><Box size={[.49,.009,.37]} material={{color:'#b2b8b1',metalness:.85,roughness:.23}}/><Box size={[.44,.011,.32]} position={[0,.004,0]} material={{color:'#737f76',metalness:.65,roughness:.25}}/><Box size={[.36,.012,.25]} position={[0,.006,0]} material={{color:'#55645d',metalness:.5,roughness:.4}}/><Tube points={[[.12,0,-.2],[.12,.24,-.2],[.12,.32,-.1],[.12,.25,.015]]} radius={.012} color={config.hardware==='brass'?'#bca171':'#aeb8b0'}/><Box size={[.018,.1,.018]} position={[.18,.05,-.2]} material={{color:'#a2aca3',metalness:.8}}/></group>}

@@ -138,6 +138,39 @@ describe('the canvas box', () => {
   });
 });
 
+// Seeing what holds a cabinet up is a view of the kitchen, not a page of its own, so the
+// toggle that turns the framing on is in the view tools with the doors and the lighting.
+// No configuration of the scene is asserted here: the geometry behind it is the subject of
+// studs.test.js, and this is only about the control being where a viewer can find it.
+describe('the studs toggle', () => {
+  it('turns the framing on, and says whether it is on', () => {
+    const c = render();
+    const toggle = byTestId(c, 'studs-toggle');
+    expect(toggle).not.toBeNull();
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toBe('Show the wall studs');
+    click(c, 'studs-toggle');
+    expect(mockStudio.update).toHaveBeenCalledWith({studs: true});
+  });
+
+  it('reads as on, and offers to hide them again, once they are shown', () => {
+    mockStudio.config.studs = true;
+    const c = render();
+    expect(byTestId(c, 'studs-toggle').getAttribute('aria-pressed')).toBe('true');
+    expect(byTestId(c, 'studs-toggle').getAttribute('aria-label')).toBe('Hide the wall studs');
+    expect(byTestId(c, 'studs-toggle').textContent).toContain('Studs on');
+    click(c, 'studs-toggle');
+    expect(mockStudio.update).toHaveBeenCalledWith({studs: false});
+    mockStudio.config.studs = false;
+  });
+
+  it('is in a lane beside the model, not on it', () => {
+    const c = render();
+    expect(byTestId(c, 'viewport-lane-top').contains(byTestId(c, 'studs-toggle'))).toBe(true);
+    expect(byTestId(c, 'kitchen-viewport').querySelector('button')).toBeNull();
+  });
+});
+
 // The workspace is the one place the kitchen is worked on, so the two controls that
 // change it — how it is laid out, and how far a cabinet comes apart — are in the same
 // lane of it rather than one here and one on a page of its own.

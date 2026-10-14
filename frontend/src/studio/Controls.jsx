@@ -2,6 +2,7 @@ import React from 'react';
 import {Check,ChevronDown,SlidersHorizontal} from 'lucide-react';
 import {Switch} from '../components/ui/switch';
 import {useStudio} from './StudioContext';
+import {SPACINGS,fixingSummary,formatMm,framingPlan} from './studs';
 
 export const SectionHeading=({children,detail})=><div className="section-heading" data-testid={`heading-${String(children).toLowerCase().replace(/[^a-z0-9]+/g,'-')}`}><h2>{children}</h2>{detail&&<span>{detail}</span>}</div>;
 export const Toggle=({id,label,checked,onChange,detail})=><div className="toggle-row"><div><label htmlFor={id}>{label}</label>{detail&&<small data-testid={`${id}-detail`}>{detail}</small>}</div><Switch id={id} data-testid={id} checked={checked} onCheckedChange={onChange} aria-label={label}/></div>;
@@ -25,10 +26,38 @@ function FinishSwatches(){
   const finishes=[['oak','Natural oak'],['walnut','Walnut'],['sage','Sage'],['ivory','Ivory'],['charcoal','Charcoal']];
   return <><SectionHeading detail="05 finishes">Cabinet finish</SectionHeading><div className="swatch-grid">{finishes.map(([key,label])=><button key={key} className={`swatch-option ${config.finish===key?'selected':''}`} data-testid={`material-swatch-${key}`} aria-label={label} aria-pressed={config.finish===key} onClick={()=>update({finish:key})}><span className={`swatch swatch-${key}`}>{config.finish===key&&<Check size={15}/>}</span><span>{label}</span></button>)}</div><div className="finish-readout" data-testid="finish-readout"><span className={`material-dot swatch-${config.finish}`}/>{finishes.find(f=>f[0]===config.finish)?.[1]}<span>Matte finish</span></div></>;
 }
+// What a cabinet is fixed to, which is the one thing about a finished kitchen that cannot
+// be seen. The panel reads the same `framingPlan` the model draws, so the list and the
+// timber behind the drywall can never disagree about either.
+function StudsPanel(){
+  const {config,update,scene}=useStudio();
+  const cabinets=(scene&&scene.cabinets)||[];
+  const plan=framingPlan({cabinets,layout:config.layout,centres:config.stud_spacing});
+  const back=plan.walls[0];
+  return <>
+    <section>
+      <SectionHeading detail={`${plan.studs} studs`}>Wall framing</SectionHeading>
+      <Toggle id="studs-switch" label="Show the studs" detail="The drywall, tiling and splashback ghost out while it is on" checked={!!config.studs} onChange={v=>update({studs:v})}/>
+      <Select id="stud-spacing" label="Centres" value={config.stud_spacing} onChange={v=>update({stud_spacing:Number(v)})}>
+        {SPACINGS.map(spacing=><option key={spacing} value={spacing}>{formatMm(spacing)}</option>)}
+      </Select>
+      <p className="panel-note" data-testid="stud-centres">Framed at {formatMm(back.centres)} centres here: a wall is rarely a whole number of bays, and narrower bays hold a screw just as well as a crowded pair of studs would.</p>
+    </section>
+    <section>
+      <SectionHeading detail={`${plan.fixings} fixings`}>What is holding it</SectionHeading>
+      {plan.cabinets.length
+        ? <ul className="fixing-list" data-testid="fixing-list">{plan.cabinets.map(record=><li key={record.id} className={`fixing-row ${record.holding}`} data-testid={`fixing-${record.id}`}><span className="fixing-id">{record.id}</span><span className="fixing-summary">{fixingSummary(record)}</span></li>)}</ul>
+        : <p className="panel-note">Nothing is standing against a wall, so there is no framing to fix to yet.</p>}
+      {plan.cleats>0&&<p className="panel-note fixing-advice" data-testid="cleat-advice">{plan.cleats} of {plan.cabinets.length} need a cleat or a rated anchor at an end that has no stud behind it.</p>}
+    </section>
+  </>;
+}
+
 export function Configurator(){
   const {config,update,tab}=useStudio();
+  const TITLES={cabinets:'Design palette',layout:'Space & layout',ceiling:'Above the kitchen',studs:'Wall & fixing'};
   return <div className="configurator" data-testid="configurator-panel">
-    <div className="panel-title"><div><span className="overline">MAKE IT YOURS</span><h2 data-testid="configurator-heading">{tab==='layout'?'Space & layout':tab==='ceiling'?'Above the kitchen':'Design palette'}</h2></div><SlidersHorizontal size={17}/></div>
+    <div className="panel-title"><div><span className="overline">MAKE IT YOURS</span><h2 data-testid="configurator-heading">{TITLES[tab]||TITLES.cabinets}</h2></div><SlidersHorizontal size={17}/></div>
     {tab==='layout'?<>
       <section><SectionHeading>Kitchen layout</SectionHeading><div className="layout-options">{[['l-shape','L-shaped'],['straight','Linear'],['galley','Galley']].map(([value,name])=><button data-testid={`layout-${value}`} className={config.layout===value?'selected':''} key={value} onClick={()=>update({layout:value,groups:[],custom:false,placements:[]})}><span className={`layout-diagram ${value}`}/><span>{name}</span>{config.layout===value&&<Check size={14}/>}</button>)}</div></section>
       <section><Toggle id="island-toggle" label="Kitchen island" checked={config.island} onChange={v=>update({island:v,groups:[],custom:false,placements:[]})}/><Toggle id="dimensions-toggle" label="Show dimensions" checked={config.dimensions} onChange={v=>update({dimensions:v})}/></section>
@@ -40,7 +69,7 @@ export function Configurator(){
     </>:tab==='ceiling'?<>
       <section><SectionHeading>Ceiling layer</SectionHeading><Toggle id="ceiling-toggle" label="Visible ceiling" checked={config.ceiling} onChange={v=>update({ceiling:v})}/><label className="range-label" htmlFor="ceiling-opacity">Opacity <span data-testid="ceiling-opacity-value">{Math.round(config.ceiling_opacity*100)}%</span></label><input type="range" id="ceiling-opacity" data-testid="ceiling-opacity" min="0" max="1" step=".01" value={config.ceiling_opacity} onChange={e=>update({ceiling_opacity:Number(e.target.value)})}/></section>
       <section><SectionHeading>Hanging pot rack</SectionHeading><div className="rack-options">{[['none','No rack'],['steel','Industrial steel'],['wood','Oak beam'],['brass','Brass ring'],['grid','Modern grid']].map(([value,label])=><button key={value} data-testid={`pot-rack-${value}`} className={config.rack===value?'selected':''} onClick={()=>update({rack:value})}><span className={`rack-preview rack-${value}`}><i/><i/><i/></span><span>{label}</span>{config.rack===value&&<Check size={14}/>}</button>)}</div></section>
-    </>:<>
+    </>:tab==='studs'?<StudsPanel/>:<>
       <SignatureLooks/>
       <section><SectionHeading>Door style</SectionHeading><div className="style-options">{[['slab','Modern slab'],['shaker','Shaker'],['fluted','Fluted']].map(([key,label])=><button key={key} className={config.style===key?'selected':''} data-testid={`style-${key}`} onClick={()=>update({style:key})}><span className={`door-preview door-${key}`}><i/></span><span>{label}</span></button>)}</div></section>
       <section><FinishSwatches/></section>

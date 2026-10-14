@@ -38,6 +38,11 @@ class Configuration(BaseModel):
     dimensions: bool = True
     units: Literal['mm', 'in'] = 'mm'
     lighting: Literal['daylight', 'evening'] = 'daylight'
+    # The framing behind the kitchen. Nothing the engine cuts depends on it: it is what the
+    # studio draws the wall studs and the cabinet fixings with, so it is carried here only
+    # so a saved or shared design opens on the same view it was left in.
+    studs: bool = False
+    stud_spacing: int = Field(600, ge=300, le=1200)
     widths: dict[str, float] = Field(default_factory=dict)
     groups: list[list[str]] = Field(default_factory=list, max_length=10)
     quote: QuoteSettings = Field(default_factory=QuoteSettings)

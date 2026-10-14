@@ -412,6 +412,15 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 .palette-options button.selected{background:none;color:var(--edge-ink)}
 .layout-options button,.rack-options button{border:0;padding:9px 0;color:var(--edge-dim);border-radius:0}
 .layout-options button.selected,.rack-options button.selected{background:none;color:var(--edge-ink)}
+/* What each cabinet is fixed to. The row carries the answer in its own colour — ink when
+   an end has no stud behind it — so the list can be read at a glance and the words only
+   have to confirm it. */
+.fixing-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.fixing-row{display:flex;gap:9px;align-items:baseline;font-size:10px;line-height:1.6;color:var(--edge-dim)}
+.fixing-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--edge-faint);min-width:24px}
+.fixing-row.cleat{color:var(--edge-ink)}
+.fixing-row.cleat .fixing-summary:before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:#e0913f;margin-right:6px;vertical-align:middle}
+.fixing-advice{color:var(--edge-ink)}
 
 /* --- The right column --------------------------------------------------- */
 .inspector-body{padding:18px 21px}
