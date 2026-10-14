@@ -256,7 +256,24 @@ export const BASE_HSL = {
   "--input": [140, 4, 24]
 };
 
+// The theme the studio is measured against is a technical viewer: slate navy chrome, cyan
+// for anything that is carrying an answer, and a dark room behind the model. That is a
+// *different base*, not a rotation of this one — the studio's own base is a warm near-grey,
+// and rotating something close to grey produces another thing close to grey, so no hue
+// shift can reach navy from here. So the blueprint base is derived from this one by rule:
+// what reads as colour becomes the cyan, what reads as grey becomes navy slate. It is
+// derived rather than typed in, so the two themes cannot drift apart when the stylesheet
+// gains another variable.
+export const BLUEPRINT_HUE = 220;     // slate navy
+const ACCENT_HUE = 196;              // the cyan something is written in
+const NEUTRAL_SATURATION = 0.12;     // below this a colour is reading as grey, not as colour
+const SLATE_SATURATION = 0.16;
+const NEUTRAL_DEPTH = 0.86;          // greys sit a little deeper in navy than in daylight
+
+export const BLUEPRINT = {id:'blueprint',name:'Blueprint',detail:'Slate navy, cyan accent',hue:0,sat:1,base:'blueprint',backdrop:'#0a1018'};
+
 export const PALETTE_PRESETS = [
+  BLUEPRINT,
   {id:'graphite',name:'Graphite',detail:'Neutral, no green',hue:0,sat:0.1},
   {id:'midnight',name:'Midnight',detail:'Cool blue slate',hue:95,sat:1},
   {id:'violet',name:'Violet',detail:'Cool violet',hue:150,sat:1},
@@ -264,7 +281,7 @@ export const PALETTE_PRESETS = [
   {id:'sage',name:'Sage',detail:'Original studio green',hue:0,sat:1},
 ];
 
-export const DEFAULT_PALETTE = PALETTE_PRESETS[0];
+export const DEFAULT_PALETTE = BLUEPRINT;
 
 function parseHex(hex) {
   const x = hex.replace('#', '');
@@ -312,15 +329,103 @@ function transformHex(hex, hueDelta, satScale) {
   return a >= 255 ? out : out + componentToHex(a);
 }
 
+function toHsl(hex) {
+  const {r, g, b, a} = parseHex(hex);
+  const rn = r / 255, gn = g / 255, bn = b / 255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return {h: 0, s: 0, l, a};
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+  else h = ((rn - gn) / d + 4) / 6;
+  return {h: h * 360, s, l, a};
+}
+
+function fromHsl({h, s, l, a}) {
+  const nh = (((h % 360) + 360) % 360) / 360;
+  const ns = Math.max(0, Math.min(1, s));
+  let r, g, b;
+  if (ns === 0) { r = g = b = l; }
+  else {
+    const q = l < 0.5 ? l * (1 + ns) : l + ns - l * ns;
+    const p = 2 * l - q;
+    const channel = t => {
+      let x = t;
+      if (x < 0) x += 1; if (x > 1) x -= 1;
+      if (x < 1 / 6) return p + (q - p) * 6 * x;
+      if (x < 1 / 2) return q;
+      if (x < 2 / 3) return p + (q - p) * (2 / 3 - x) * 6;
+      return p;
+    };
+    r = channel(nh + 1 / 3); g = channel(nh); b = channel(nh - 1 / 3);
+  }
+  const out = '#' + componentToHex(r * 255) + componentToHex(g * 255) + componentToHex(b * 255);
+  return a >= 255 ? out : out + componentToHex(a);
+}
+
+// One colour of the studio's theme, as it would be in the blueprint theme.
+export function blueprintOf(hex) {
+  const {s, l, a} = toHsl(hex);
+  const colour = s >= NEUTRAL_SATURATION;
+  return fromHsl({
+    h: colour ? ACCENT_HUE : BLUEPRINT_HUE,
+    s: colour ? Math.min(1, s * 1.05) : SLATE_SATURATION,
+    l: colour ? l : l * NEUTRAL_DEPTH,
+    a,
+  });
+}
+
+// The shadcn tokens, the same way. They are all near-neutral in the studio's theme, so in
+// practice they all become navy — but the rule is the rule, and a token that gains colour
+// later takes the cyan with everything else.
+export function blueprintToken([, s, l]) {
+  const colour = s / 100 >= NEUTRAL_SATURATION;
+  // Lightness is kept: these tokens are the shadcn layer's own contrast pairs, and moving
+  // them is how a theme ends up with text that cannot be read against its own background.
+  return [colour ? ACCENT_HUE : BLUEPRINT_HUE, colour ? Math.min(100, s * 1.05) : SLATE_SATURATION * 100, l];
+}
+
+export const BLUEPRINT_BASE = Object.fromEntries(Object.entries(BASE).map(([name, hex]) => [name, blueprintOf(hex)]));
+
+export const PALETTE_BASES = {studio: BASE, blueprint: BLUEPRINT_BASE};
+
+// Which base a palette is drawn on. The preset's own `base` wins; a palette the sliders have
+// taken over (`id: 'custom'`) carries the base it was derived from, so dragging the hue while
+// the navy theme is on shifts the navy rather than snapping back to the studio's olive.
+export function baseNameOf(palette) {
+  const chosen = palette && palette.base;
+  if (chosen && PALETTE_BASES[chosen]) return chosen;
+  const preset = PALETTE_PRESETS.find(entry => entry.id === (palette && palette.id));
+  return (preset && preset.base) || 'studio';
+}
+
+export function baseOf(palette) {
+  return PALETTE_BASES[baseNameOf(palette)];
+}
+
+// The room behind the model, when the theme brings one. Null means the studio's own
+// daylight floor, which is what every theme except the blueprint uses.
+export function viewerBackgroundOf(palette) {
+  const preset = PALETTE_PRESETS.find(entry => entry.id === (palette && palette.id));
+  if (preset && preset.backdrop) return preset.backdrop;
+  return baseNameOf(palette) === 'blueprint' ? BLUEPRINT.backdrop : null;
+}
+
 export function applyPalette(palette) {
   const {hue, sat} = {...DEFAULT_PALETTE, ...(palette || {})};
+  const base = baseOf(palette);
   const root = document.documentElement;
   const vars = {};
-  Object.entries(BASE).forEach(([name, hex]) => {
+  Object.entries(base).forEach(([name, hex]) => {
     vars[name] = transformHex(hex, hue, sat);
   });
   Object.entries(BASE_HSL).forEach(([name, [h, s, l]]) => {
-    vars[name] = `${(((h + hue) % 360) + 360) % 360} ${Math.max(0, Math.min(100, s * sat)).toFixed(2)}% ${l}%`;
+    const token = base === BASE ? [h, s, l] : blueprintToken([h, s, l]);
+    const [th, ts, tl] = token;
+    vars[name] = `${(((th + hue) % 360) + 360) % 360} ${Math.max(0, Math.min(100, ts * sat)).toFixed(2)}% ${tl}%`;
   });
   Object.entries(vars).forEach(([name, value]) => root.style.setProperty(name, value));
   // Cache the resolved values so public/index.html can re-apply them before

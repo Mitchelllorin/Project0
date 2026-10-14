@@ -9,6 +9,7 @@ import {LayoutWidget} from './LayoutWidget';
 import {explodeAmount,explodeScope} from './explodeScope';
 import {TRANSLATION_SNAP_M,ROTATION_SNAP_RAD,stretchedWidth,stretchable} from './layoutWidget';
 import {doorsOpenFor} from './doors';
+import {viewerBackgroundOf} from './palette';
 import {useNavigate} from 'react-router-dom';
 import {Cabinet3D} from './Cabinet3D';
 import {Room3D} from './Room3D';
@@ -155,7 +156,7 @@ function AssemblyVectors({cabinets,amount}) {
   return <lineSegments geometry={geometry}><lineBasicMaterial color="#e2b878" transparent opacity={.4}/></lineSegments>;
 }
 
-function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
+function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET,backdrop=null}) {
   const {scene,config,selected,selectCabinet,explode,inspected,setInspected,camera,update,doorsOpen,arrange,setArrange,gizmoMode,moveCabinet,resizeCabinet,picked}=useStudio();
   const gizmo=useRef();
   const chosen=assembly?scene.cabinets.filter(c=>selected.includes(c.id)):scene.cabinets;
@@ -167,7 +168,10 @@ function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
   },[chosen]);
   const offset=assembly?[-box.x,0,-box.z]:[-scene.dimensions.footprint_width/2000,0,-1.3];
   return <>
-    <color attach="background" args={[assembly?'#343a37':config.lighting==='daylight'?'#c7c9c1':'#727a70']}/>
+    {/* A theme may bring its own room with it: the blueprint theme puts the model on a dark
+        stage, the way the technical viewer it is drawn from does. Without one, this is the
+        daylight floor the studio has always rendered on. */}
+    <color attach="background" args={[backdrop||(assembly?'#343a37':config.lighting==='daylight'?'#c7c9c1':'#727a70')]}/>
     <ambientLight intensity={config.lighting==='daylight'?1.05:.6}/>
     <directionalLight position={[-3,7,4]} intensity={config.lighting==='daylight'?3:1.5} color={config.lighting==='daylight'?'#fff6e5':'#ffd5a0'} castShadow shadow-mapSize={[budget.shadowMapSize,budget.shadowMapSize]} shadow-bias={-.0003} shadow-normalBias={.02} shadow-camera-left={-5} shadow-camera-right={5} shadow-camera-top={5} shadow-camera-bottom={-5}/>
     <directionalLight position={[4,3,-2]} intensity={.8} color="#dae5e1"/>
@@ -200,7 +204,7 @@ function Scene({assembly,onOpenAssembly,budget=HIGH_BUDGET}) {
 }
 
 export function Viewport({assembly=false}) {
-  const {scene,config,update,camera,setCamera,presentation,selected,brand,busy,explode,selectCabinet,setInspected,doorsOpen,toggleDoors,arrange,setArrange}=useStudio();const navigate=useNavigate();
+  const {scene,config,update,camera,setCamera,presentation,selected,brand,busy,explode,selectCabinet,setInspected,doorsOpen,toggleDoors,arrange,setArrange,palette}=useStudio();const navigate=useNavigate();
   const device=useDeviceProfile();const budget=renderBudget(device);
   // Every panel that floats over the model can be put away, and every one leaves a pill
   // behind. Session-only: the next visit gets its controls back.
@@ -225,7 +229,7 @@ export function Viewport({assembly=false}) {
       :<div className="viewport-top-tools" data-testid="viewport-tools-collapsed"><PanelPill label="the view tools" text="View tools" icon={<SlidersHorizontal size={13}/>} testId="tools-expand" onRestore={tools.restore}/></div>}
     </div>
     <section className={`viewport ${assembly?'assembly-viewport':''}`} data-testid="kitchen-viewport">
-      <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
+      <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} backdrop={viewerBackgroundOf(palette)} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
     </section>
     <div className="viewport-lane viewport-lane-bottom" data-testid="viewport-lane-bottom">
     {/* The card that lays the kitchen out and the bar that opens a cabinet up are two
