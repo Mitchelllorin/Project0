@@ -209,19 +209,29 @@ export function Viewport({assembly=false}) {
   const command=view=>setCamera({view,tick:camera.tick+1});
   const names={oak:'Natural oak',walnut:'American walnut',sage:'Sage green',ivory:'Warm ivory',charcoal:'Soft charcoal'};
   const model=scene?.cabinets.find(c=>c.id===selected[0]);
-  return <section className={`viewport ${assembly?'assembly-viewport':''}`} data-testid="kitchen-viewport">
+  // The studio's chrome used to be drawn *over* the model: a caption in the corner, a
+  // tool column, a camera dock, a layout card and an explode bar, all of them sitting on
+  // the kitchen. Every one of them is still here, and still dismissable — but as two
+  // lanes, one above the canvas and one below it. The canvas box holds the canvas and
+  // nothing else, so at any window size there is no control left that can land on the
+  // model, rather than a control that is merely kept away from the middle of it.
+  return <>
+    <div className="viewport-lane viewport-lane-top" data-testid="viewport-lane-top">
     {heading.open?
       <div className="viewport-heading" data-testid="viewport-heading"><div className="viewport-eyebrow" data-testid="viewport-mode"><span className="live-dot"/>{assembly?'ASSEMBLY EXPLORER':'LIVE DESIGN'}<PanelDismiss label="the design caption" testId="heading-dismiss" className="heading-dismiss" onDismiss={heading.dismiss}/></div><h1 data-testid="scene-title">{assembly?(selected.length>1?'Merged assembly':model?.name):'A space. Your signature.'}</h1><p data-testid="scene-material-summary">{assembly?`${selected.join(' + ')} · Euro / 32 mm system`:`${names[config.finish]} / ${config.style==='slab'?'Modern slab':config.style==='shaker'?'Classic shaker':'Fluted front'}`}</p>{assembly?<p className="viewport-hint">{device.touch?"Tap a component to inspect it":"Click a component to inspect it"}</p>:<p className="viewport-hint">{device.touch?"Tap a cabinet to select · then tap Assembly":"Click a cabinet to select · double-click to explore its assembly"}</p>}</div>
       :<div className="viewport-heading" data-testid="viewport-heading-collapsed"><PanelPill label="the design caption" text="Caption" icon={<Info size={13}/>} testId="heading-expand" onRestore={heading.restore}/></div>}
     {tools.open?
       <div className="viewport-top-tools" data-testid="viewport-tools"><PanelDismiss label="the view tools" testId="tools-dismiss" className="tools-dismiss" onDismiss={tools.dismiss}/><button data-testid="lighting-toggle" title="Switch lighting" onClick={()=>update({lighting:config.lighting==='daylight'?'evening':'daylight'})}>{config.lighting==='daylight'?<Sun size={15}/>:<Moon size={15}/>}<span>{config.lighting==='daylight'?'Daylight':'Evening'}</span></button>{!assembly&&<button data-testid="doors-toggle" title={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} aria-label={doorsOpen?"Close the cabinet doors":"Open the cabinet doors"} onClick={toggleDoors}><DoorOpen size={15}/><span>{doorsOpen?"Close doors":"Open doors"}</span></button>}{!assembly&&<button data-testid="arrange-toggle" className={arrange?"active":""} title="Arrange cabinets freely" aria-label="Arrange cabinets" onClick={()=>setArrange(!arrange)}><Move size={15}/><span>{arrange?"Arranging":"Arrange"}</span></button>}{!assembly&&<button data-testid="open-assembly" disabled={!selected.length} title={selected.length?"Explore this cabinet's assembly":"Select a cabinet first"} aria-label="Explore assembly" onClick={()=>selected.length&&navigate('/assembly')}><Layers size={15}/><span>Assembly</span></button>}<span className="render-quality" data-testid="render-quality"><span/> {busy?'Updating':'Live render'}</span>{config.rack!=='none'&&<button data-testid="dismiss-pot-rack" title="Remove pot rack" aria-label="Remove pot rack" onClick={()=>update({rack:'none'})}><span>{config.rack.charAt(0).toUpperCase()+config.rack.slice(1)} pot rack</span><X size={14}/></button>}</div>
       :<div className="viewport-top-tools" data-testid="viewport-tools-collapsed"><PanelPill label="the view tools" text="View tools" icon={<SlidersHorizontal size={13}/>} testId="tools-expand" onRestore={tools.restore}/></div>}
-    <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
-    {/* One column, one corner: the card that lays the kitchen out and the bar that opens
-        a cabinet up are the same workspace's controls, so they are stacked in one place
-        and cannot be drawn over each other. The explode is here in the design studio too,
-        not just in the explorer — you decide how far to take it with the rest of the run
-        still standing next to it. */}
+    </div>
+    <section className={`viewport ${assembly?'assembly-viewport':''}`} data-testid="kitchen-viewport">
+      <Canvas frameloop="demand" shadows dpr={budget.dpr} camera={{position:[-4.7,3.95,5.6],fov:38,near:.01,far:70}} gl={{antialias:true,powerPreference:'high-performance'}} onPointerMissed={()=>{if(tapGuard.isTap())setInspected(null);}} data-testid="kitchen-canvas"><Suspense fallback={null}>{scene&&<Scene budget={budget} assembly={assembly} onOpenAssembly={id=>{selectCabinet(id);navigate('/assembly');}}/>}</Suspense></Canvas>
+    </section>
+    <div className="viewport-lane viewport-lane-bottom" data-testid="viewport-lane-bottom">
+    {/* The card that lays the kitchen out and the bar that opens a cabinet up are two
+        items in this lane, side by side, so neither can be drawn over the other. The
+        explode is here in the design studio too, not only in the explorer — you decide
+        how far to take it with the rest of the run still standing next to it. */}
     <div className="model-controls" data-testid="model-controls">
       {!assembly&&arrange&&<LayoutWidget/>}
       <ExplodeControls subject={assembly?null:model?.id}/>
@@ -235,5 +245,6 @@ export function Viewport({assembly=false}) {
     </div>
       :<div className="view-dock is-collapsed" data-testid="camera-toolbar-collapsed"><PanelPill label="the camera dock" text="Camera" icon={<Camera size={15}/>} testId="dock-expand" onRestore={dock.restore}/></div>}
     {assembly?<div className="viewport-bottom-right" data-testid="exploded-stage-label">{Math.round(explode*100)}% EXPLODED</div>:<div className="viewport-bottom-right" data-testid="viewport-brand">DESIGNED IN <strong>{brand.name.toUpperCase()}</strong></div>}
-  </section>;
+    </div>
+  </>;
 }

@@ -1,30 +1,27 @@
-// The model gets the centre of the window. Everything a viewer can press is
-// drawn at the edge of it — a rail, two columns of type and a strip along the
-// bottom — and nothing is anchored to the middle, because the middle is the
-// kitchen and the middle is where a cabinet gets dragged.
+// Nothing is drawn over the model.
 //
-// jsdom renders no layout and no cascade, so this reads the real stylesheet and
-// resolves it the way a browser would: the last declaration for a property, in
-// file order, wins. That is what makes it a check on the *effective* rule rather
-// than on the presence of a string. The centred declarations are all still in
-// the file, shadowed on purpose by the perimeter block at the end — this is what
-// proves they are shadowed, so a later edit cannot quietly reinstate one.
+// This file used to hold a weaker rule — nothing anchored to the *middle* of the window,
+// every strip pinned to an edge of it. But an edge of the window is still the kitchen, so
+// the strips were still on the model, and so were the palette and the inspector. What it
+// asserts now is a structure: the canvas box, `.viewport`, holds the canvas and nothing
+// else, and every control is an item of a lane above or below it, in the flow of
+// `.workspace`. A structure does not need keeping up to date when the window changes
+// shape; a coordinate does, and that is what kept going wrong.
 //
-// The vertical half of the same rule — how tall the layout card may grow before
-// it reaches the middle — is held to its arithmetic in layoutCardCap.test.js.
+// jsdom renders no layout and no cascade, so this reads the real stylesheet and resolves
+// it the way a browser would: the last declaration for a property, in file order, wins.
+// That is what makes it a check on the *effective* rule rather than on the presence of a
+// string. Comments are stripped before parsing, both because they sit between rules and
+// would otherwise be swallowed into the next rule's selector, and because a comment that
+// *names* a deleted property must not read as the property still being there.
 import fs from 'fs';
 import path from 'path';
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'App.css'), 'utf8');
-// Comments stripped before parsing, because they sit *between* rules and the
-// pattern below would otherwise swallow one into the next rule's selector.
 const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-// Every `selector{declarations}` block, in file order. Nested at-rules flatten:
-// the pattern cannot cross a brace, so `@media(...){.a{...}}` yields `.a{...}`.
-// That is what a resolved check wants here, because file order is the order that
-// decides, and the media conditions only ever restate a value rather than being
-// the value itself.
+// Every `selector{declarations}` block, in file order. Nested at-rules flatten: the
+// pattern cannot cross a brace, so `@media(...){.a{...}}` yields `.a{...}`.
 function declarations(selector) {
   const found = [];
   const block = /([^{}]+)\{([^{}]*)\}/g;
@@ -49,114 +46,120 @@ function resolved(selector, property) {
   return all.length ? all[all.length - 1].value : null;
 }
 
-// Anything that used to float over the model. Each one must be pinned to an
-// edge: a `50%` left with a matching transform is the definition of "anchored
-// to the middle", which is the thing this view exists without.
-const OVERLAYS = ['.view-dock', '.model-controls', '.layout-widget', '.explode-controls', '.connection-error'];
+// Everything that used to float over the model. Each one is an item of a lane now, so
+// none of them may carry a corner of its own.
+const STRIPS = ['.viewport-heading', '.viewport-top-tools', '.view-dock', '.model-controls',
+  '.viewport-corner-label', '.viewport-bottom-right'];
 
-describe('the model owns the window', () => {
-  test('the 3D area fills the workspace instead of sitting between two columns', () => {
-    expect(resolved('.workspace', 'display')).toBe('block');
-    expect(resolved('.viewport-wrap', 'position')).toBe('absolute');
-    expect(resolved('.viewport-wrap', 'inset')).toBe('0');
+describe('the model owns its box', () => {
+  test('the workspace is a row of lanes and the middle one is the canvas column', () => {
+    expect(resolved('.workspace', 'display')).toBe('flex');
+    expect(resolved('.viewport-wrap', 'display')).toBe('flex');
+    expect(resolved('.viewport-wrap', 'flex-direction')).toBe('column');
   });
 
-  test('the documents that replace it fill the same area', () => {
-    expect(resolved('.document-page', 'position')).toBe('absolute');
-    expect(resolved('.document-page', 'inset')).toBe('0');
+  test('the canvas box is the flexible one, in flow, with no offsets of its own', () => {
+    expect(resolved('.viewport', 'position')).toBe('relative');
+    expect(resolved('.viewport', 'flex')).toBe('1');
+    expect(resolved('.viewport', 'min-height')).toBe('0');
+    expect(resolved('.viewport', 'inset')).toBe('auto');
   });
 
-  test.each(OVERLAYS)('%s is pinned to an edge, never to the middle', selector => {
-    expect(resolved(selector, 'left')).not.toBe('50%');
-    expect(resolved(selector, 'transform')).not.toBe('translateX(-50%)');
+  test('the canvas still fills the box it was given', () => {
+    expect(resolved('.viewport>div:has(>canvas)', 'position')).toBe('absolute');
+    expect(resolved('.viewport>div:has(>canvas)', 'inset')).toBe('0');
   });
 
-  // Not merely shadowed — gone. A `50%` left with a matching transform is the
-  // exact idiom for anchoring something to the middle of the window, and leaving
-  // dead ones in the file means the next person to reorder a block resurrects
-  // one without noticing. There is no if about it: the stylesheet does not
-  // contain the pattern at all.
-  test('the stylesheet has no way to anchor anything to the middle', () => {
-    expect(css).not.toContain('left:50%');
-    expect(css).not.toContain('translateX(-50%)');
+  // The palette and the inspector are lanes beside the model. Below 701px and 1001px
+  // respectively there is no width for a fourth and fifth column, so there they are the
+  // slide-overs they already were — opt-in, dismissable, and the only place in the studio
+  // where a panel is still drawn over the canvas.
+  test('the two columns become flow lanes above the width where they are slide-overs', () => {
+    expect(source).toMatch(/@media\(min-width:701px\)\{\.left-panel\{[^}]*position:relative/);
+    expect(source).toMatch(/@media\(min-width:1001px\)\{\.right-panel\{[^}]*position:relative/);
   });
 
-  // Not merely "not 50%": the strips have to clear the columns they now share
-  // the perimeter with, and that is what the three width properties are for.
-  //
-  // This asks whether *a* rule sets each offset, not which one wins, because the
-  // flattened source has lost the media conditions that choose between them —
-  // the narrow-screen override is a real value at 700px and never applies on a
-  // desktop, and neither ordering is wrong.
-  test('the strips clear the rail and the columns they sit beside', () => {
-    const declares = (selector, property) =>
-      declarations(selector).filter(d => d.property === property).map(d => d.value);
-
-    expect(declares('.view-dock', 'right')).toEqual(expect.arrayContaining([expect.stringContaining('--right-w')]));
-    // The layout card and the explode bar share one column, and the column is what
-    // is pinned: the strips inside it are ordinary stacked items, which is how the two
-    // are kept from being drawn over each other.
-    expect(declares('.model-controls', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
-    expect(declares('.viewport-heading', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
-    expect(declares('.viewport-top-tools', 'right')).toEqual(expect.arrayContaining([expect.stringContaining('--right-w')]));
-    expect(declares('.viewport-corner-label', 'left')).toEqual(expect.arrayContaining([expect.stringContaining('--rail-w')]));
-    expect(declares('.viewport-bottom-right', 'right')).toEqual(expect.arrayContaining([expect.stringContaining('--right-w')]));
+  test.each(STRIPS)('%s is an item of a lane, never positioned against the window', selector => {
+    expect(resolved(selector, 'position')).toBe('static');
+    for (const corner of ['left', 'right', 'top', 'bottom', 'inset']) {
+      expect(resolved(selector, corner)).toBe('auto');
+    }
   });
 
-  // The one that was actually wrong on screen: everything on the left edge was
-  // offset past the *rail*, which put the caption, the corner label and the
-  // layout card on top of the left column — type over type. They clear the
-  // column, not just the rail, and this is the rule that says so.
-  test.each(['.viewport-heading', '.viewport-corner-label', '.model-controls'])(
-    '%s starts where the left column ends, not where the rail does',
-    selector => {
-      const lefts = declarations(selector).filter(d => d.property === 'left').map(d => d.value);
-      expect(lefts).toEqual(expect.arrayContaining([expect.stringContaining('--left-w')]));
-    });
+  test('the lanes themselves are in the flow, not laid over the canvas', () => {
+    expect(resolved('.viewport-lane', 'position')).toBe('relative');
+    expect(resolved('.viewport-lane', 'display')).toBe('flex');
+  });
+
+  // The lane under the canvas is the one that can grow — the layout card opens into it —
+  // so that is the one that is capped, and it scrolls what does not fit rather than
+  // growing over the run. layoutCardCap.test.js holds it to the arithmetic.
+  test('the lane under the canvas is capped, and scrolls what does not fit', () => {
+    expect(resolved('.viewport-lane-bottom', 'max-height')).not.toBeNull();
+    expect(resolved('.viewport-lane-bottom', 'overflow')).toBe('auto');
+  });
+
+  // Not merely shadowed — gone. A `50%` left with a matching transform is the exact idiom
+  // for anchoring something to the middle of the window, and there is no middle to anchor
+  // to any more: the box between the lanes is the model's.
+  test('the stylesheet has no way to anchor anything to the middle of the window', () => {
+    expect(source).not.toContain('left:50%');
+    expect(source).not.toContain('translateX(-50%)');
+  });
+
+  // Three custom properties were added to keep strips clear of the two columns as the
+  // window narrowed. No strip is drawn over the columns any more, so they are deleted
+  // rather than left declared: a rule reaching for one now means nothing at all, and this
+  // is what stops that being a silent no-op.
+  test('the properties that existed only to dodge the columns are gone', () => {
+    for (const property of ['--left-w', '--right-w', '--edge-gap']) {
+      expect(source).not.toContain(property);
+    }
+    // ...and the one that is still read — the rail's width, for the phone slide-over —
+    // is declared once per breakpoint that changes the chrome.
+    expect(source).toMatch(/^:root\{--rail-w:61px/m);
+    expect(source).toMatch(/@media\(max-width:1250px\)\{:root\{--rail-w:53px/);
+    expect(source).toMatch(/@media\(max-width:700px\)\{:root\{--rail-w:44px/);
+  });
 });
 
-describe('the perimeter is type, not panels', () => {
+describe('the chrome is type, not panels', () => {
   test.each(['.tool-rail', '.left-panel', '.right-panel'])('%s has no surface of its own', selector => {
     expect(resolved(selector, 'background')).toBe('none');
     expect(resolved(selector, 'border')).toBe('0');
   });
 
-  test.each(['.view-dock', '.layout-widget', '.explode-controls'])('%s has given up its card', selector => {
-    expect(resolved(selector, 'background')).toBe('none');
-    expect(resolved(selector, 'border')).toBe('0');
-    expect(resolved(selector, 'backdrop-filter')).toBe('none');
+  test.each(['.view-dock', '.model-controls', '.explode-controls', '.layout-widget'])(
+    '%s has given up its card', selector => {
+      expect(resolved(selector, 'background')).toBe('none');
+      expect(resolved(selector, 'border')).toBe('0');
+      expect(resolved(selector, 'backdrop-filter')).toBe('none');
+    });
+
+  test('the box that holds the two strips is not a panel either', () => {
+    expect(resolved('.model-controls', 'background')).toBe('none');
+    expect(resolved('.model-controls', 'border')).toBe('0');
+    expect(resolved('.model-controls', 'backdrop-filter')).toBe('none');
   });
 
-  // The column is a container, not a surface: it is invisible type over the scene, so it
-  // may not grow a background of its own. The strips inside it are held by the reset
-  // above (`background:none!important`), and this is what says the column is subject to
-  // the same rule rather than being the one element the styling quietly let through.
-  test('the column that holds the two strips is not a panel either', () => {
-    expect(resolved('.model-controls', 'background')).toBeNull();
-    expect(resolved('.model-controls', 'border')).toBeNull();
+  // The lanes are containers, never surfaces: nothing declares a fill, an edge or a
+  // shadow on one, so there is nothing to override if a rule later tries to give it one
+  // and nothing that reads as a panel behind the type.
+  test('the lanes never grow a surface either', () => {
+    expect(resolved('.viewport-lane', 'background')).toBeNull();
+    expect(resolved('.viewport-lane', 'border')).toBeNull();
+    expect(resolved('.viewport-lane', 'box-shadow')).toBeNull();
   });
 
-  test('the strips give up their corners to that column', () => {
-    // Two strips, one corner: neither may claim a position of its own inside it, or the
-    // pair could be drawn on top of one another in the same spot.
-    expect(css).toMatch(/\.model-controls>\.layout-widget,\.model-controls>\.explode-controls\{[^}]*position:static/);
+  test('the strips give up their own corners to the lanes', () => {
+    // Two strips, side by side in one lane: neither may claim a position of its own
+    // inside it, or the pair could be drawn on top of one another.
+    expect(source).toMatch(/\.model-controls>\.layout-widget,\.model-controls>\.explode-controls\{[^}]*position:static/);
   });
 
   test('the words carry their own contrast, since no background does it for them', () => {
-    // One shadow on the columns, inherited by every label inside them, and one
-    // on each strip drawn over the scene: readable over a daylight floor and a
-    // dark evening one without a panel behind any of it.
     expect(resolved('.left-panel', 'text-shadow')).toContain('--edge-shadow');
-    expect(resolved('.view-dock', 'text-shadow')).toContain('--edge-shadow');
+    expect(resolved('.viewport-lane', 'text-shadow')).toContain('--edge-shadow');
     expect(resolved('.viewport-heading h1', 'text-shadow')).toContain('--edge-shadow');
-  });
-
-  test('the three width properties the overlays read are declared at every breakpoint', () => {
-    // Declared once in each media block that changes the chrome, so the strips
-    // cannot drift from the columns they are clearing.
-    expect(css).toMatch(/^:root\{[^}]*--rail-w:61px[^}]*--left-w:278px[^}]*--right-w:285px/m);
-    expect(css).toMatch(/@media\(max-width:1250px\)\{:root\{[^}]*--rail-w:53px[^}]*--left-w:244px[^}]*--right-w:255px/);
-    expect(css).toMatch(/@media\(max-width:1000px\)\{:root\{[^}]*--right-w:0px/);
-    expect(css).toMatch(/@media\(max-width:700px\)\{:root\{[^}]*--rail-w:44px[^}]*--left-w:0px/);
   });
 });

@@ -1,6 +1,8 @@
-// The panels drawn over the canvas are the thing this view exists to get out of
-// the way, so they are driven the way a viewer uses them: dismiss each one,
-// expect the model to be clear, bring it back from its pill.
+// The panels beside the canvas are the thing this view exists to keep out of the way,
+// so they are driven the way a viewer uses them: dismiss each one, expect the model to
+// be clear, bring it back from its pill. The last block is the one that matters most —
+// the canvas box holds the canvas and nothing else, so no control can be drawn on the
+// model in the first place.
 //
 // The canvas is stubbed rather than rendered — jsdom cannot load `three`'s build,
 // and none of this needs a scene, only the chrome painted on top of one.
@@ -94,9 +96,51 @@ describe('the panels over the model', () => {
   });
 });
 
+// Nothing a viewer can press is inside the canvas box. That is the whole rule, and it is
+// a property of where the elements are rather than of where they are drawn, which is what
+// makes it hold at every window size instead of at the one it was measured at.
+describe('the canvas box', () => {
+  it('holds the canvas and nothing else — no button, no panel, no readout', () => {
+    const c = render();
+    const box = byTestId(c, 'kitchen-viewport');
+    expect(box).not.toBeNull();
+    expect(box.querySelector('button')).toBeNull();
+    ['viewport-heading', 'viewport-tools', 'camera-toolbar', 'model-controls', 'viewport-layout',
+      'viewport-brand', 'viewport-lane-top', 'viewport-lane-bottom'].forEach(id => {
+      expect(box.querySelector(`[data-testid="${id}"]`)).toBeNull();
+    });
+  });
+
+  it('sits between the two lanes that do hold them', () => {
+    const c = render();
+    const top = byTestId(c, 'viewport-lane-top');
+    const bottom = byTestId(c, 'viewport-lane-bottom');
+    expect(top).not.toBeNull();
+    expect(bottom).not.toBeNull();
+
+    expect(top.contains(byTestId(c, 'viewport-heading'))).toBe(true);
+    expect(top.contains(byTestId(c, 'viewport-tools'))).toBe(true);
+    expect(bottom.contains(byTestId(c, 'camera-toolbar'))).toBe(true);
+    expect(bottom.contains(byTestId(c, 'viewport-layout'))).toBe(true);
+    expect(bottom.contains(byTestId(c, 'viewport-brand'))).toBe(true);
+    // The model controls are in the lane under the canvas, next to the readouts.
+    expect(bottom.contains(byTestId(c, 'model-controls'))).toBe(true);
+  });
+
+  it('moves a panel into its lane, keeping it, when it is put away', () => {
+    // Dismissing a panel leaves its pill in the same lane, so putting the chrome away can
+    // never empty a lane onto the canvas.
+    const c = render();
+    click(c, 'heading-dismiss');
+    const top = byTestId(c, 'viewport-lane-top');
+    expect(top.contains(byTestId(c, 'viewport-heading-collapsed'))).toBe(true);
+    expect(byTestId(c, 'kitchen-viewport').querySelector('button')).toBeNull();
+  });
+});
+
 // The workspace is the one place the kitchen is worked on, so the two controls that
 // change it — how it is laid out, and how far a cabinet comes apart — are in the same
-// corner of it rather than one here and one on a page of its own.
+// lane of it rather than one here and one on a page of its own.
 describe('the controls in the workspace corner', () => {
   afterEach(() => {
     mockStudio.arrange = false;

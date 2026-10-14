@@ -1,44 +1,36 @@
-// The layout card and the explode bar share one column — `.model-controls` — and the
-// column is what is pinned to the bottom edge of the 3D area (bottom:46px) and grows
-// *upward* when the card's one row folds open. Left unbounded it rises past the vertical
-// centre and stands on the model — a 298px card over the middle of the kitchen at
-// 1024x640, which is exactly where a cabinet gets dragged.
+// The layout card grows when its 'More' disclosure opens, and it grows inside the lane
+// under the canvas. Left unbounded that lane takes whatever the card asks for, and the
+// model — the one thing in the window that cannot move, scroll or be put away — pays for
+// it. (Left unbounded it also used to be a card laid across the middle of the kitchen,
+// when the card hung off the bottom edge of the window; that argument is gone with the
+// overlay, but the reason for it is not.)
 //
-// The cap is declared on the column and not on the card. The column is the element that
-// is pinned and the element that grows; a cap on a card inside a flex column, measured
-// against a parent whose height is only a maximum, resolves to nothing — a guard that
-// reads as one and is not. jsdom computes no layout, so there is nothing here to measure.
-// Instead this reads the real stylesheet and does the arithmetic a browser would, for
-// every height the 3D area takes in the layouts the studio is actually used at. If a rule
-// ever hands the column back more height than the corner it lives in can spare, this
-// fails here instead of on someone's screen.
+// The cap is on the lane, and it is the only cap. jsdom computes no layout, so there is
+// nothing here to measure; instead this reads the real stylesheet and does the arithmetic
+// a browser would, for every height the workspace takes in the layouts the studio is
+// actually used at. Two things it holds to: the model keeps the majority of the window,
+// and the lane is never so short that the controls in it cannot be used.
 import fs from 'fs';
 import path from 'path';
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'App.css'), 'utf8');
-// Comments sit between rules and would otherwise be swallowed into the *next* rule's
-// selector by the pattern below — and this file matches selectors exactly now, so a rule
-// that shares its name with a paragraph of prose would measure as nothing at all.
+// Comments stripped: they sit between rules and would otherwise be swallowed into the
+// next rule's selector, and this file matches selectors exactly.
 const source = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-const COLUMN_BOTTOM = 46; // .model-controls{bottom:46px}
-// bottom:46px plus the 27px status bar and a gap: the column never reaches the bottom
-// edge of the window either.
-const EDGE_CLEARANCE = 98;
-const CENTRE_MARGIN = 16; // how far below the middle of the 3D area the column starts
-// The layout bar (51px) plus, under it, the explode bar (~44px) and the 14px gap between
-// them. The two strips share this corner now, so the floor has to hold both of them: any
-// lower and the card is squeezed under its own bar.
-const USABLE_COLUMN = 112;
+// The layout bar (51px) plus, beside it, the explode bar (~44px) and the gap between
+// them: below this the lane cannot show the controls it exists for.
+const USABLE_LANE = 112;
+// The canvas keeps this share of the workspace at worst. It is the model's box; a lane
+// that grows past it is the model being pushed out of its own window.
+const MODEL_MAJORITY = 0.55;
 
-// `.viewport-wrap` heights, from a short landscape phone up to a maximised
-// desktop window: 900x560 and 1024x640 panels included, because that is the
-// shape this went wrong in.
+// Workspace heights, from a short landscape phone up to a maximised desktop window:
+// 900x560 and 1024x640 panels included, because that is the shape this went wrong in.
 const VIEW_HEIGHTS = [388, 436, 516, 568, 640, 748, 900];
 
-// Every max-height declared for the pinned column, and only for the column itself —
-// `.model-controls>.explode-controls`, for one, sets its own and is not this.
-function columnCaps() {
+// Every max-height declared for the lane under the canvas, and only for the lane itself.
+function laneCaps() {
   const caps = [];
   const block = /([^{}]+)\{([^{}]*)\}/g;
   let match;
@@ -46,7 +38,7 @@ function columnCaps() {
     const applies = match[1]
       .split(',')
       .map(selector => selector.trim())
-      .some(selector => selector === '.model-controls');
+      .some(selector => selector === '.viewport-lane-bottom');
     if (!applies) continue;
     const declared = /max-height:([^;}]+)/.exec(match[2]);
     if (declared) caps.push(declared[1].trim());
@@ -94,46 +86,45 @@ function splitTopLevel(value) {
   return parts.map(part => part.trim());
 }
 
-describe('the column the layout card and the explode bar share', () => {
-  const caps = columnCaps();
+describe('the lane the layout card grows in', () => {
+  const caps = laneCaps();
 
   test('declares a height cap at all', () => {
     expect(caps.length).toBeGreaterThan(0);
   });
 
-  test.each(VIEW_HEIGHTS)('cannot rise into the middle of a %ipx 3D area', (container) => {
+  test.each(VIEW_HEIGHTS)('leaves the model the majority of a %ipx workspace', (container) => {
     for (const cap of caps) {
-      const allowed = height(cap, container);
-      const top = container - COLUMN_BOTTOM - allowed;
-      expect(top).toBeGreaterThanOrEqual(container / 2 + CENTRE_MARGIN);
+      // A hair of tolerance: these are percentages evaluated in floating point.
+      expect(height(cap, container)).toBeLessThanOrEqual(container * (1 - MODEL_MAJORITY) + 1e-9);
     }
   });
 
-  test.each(VIEW_HEIGHTS)('stays inside a %ipx 3D area, clear of the bottom edge', (container) => {
+  test.each(VIEW_HEIGHTS)('keeps a usable lane at %ipx', (container) => {
     for (const cap of caps) {
-      expect(height(cap, container)).toBeLessThanOrEqual(container - EDGE_CLEARANCE);
+      expect(height(cap, container)).toBeGreaterThanOrEqual(USABLE_LANE);
     }
   });
 
-  // The floor is what keeps the corner usable on a view too short to respect the
-  // rule above: the strips and their gap have to survive the cap.
-  test.each(VIEW_HEIGHTS)('keeps a usable column at %ipx', (container) => {
-    for (const cap of caps) {
-      expect(height(cap, container)).toBeGreaterThanOrEqual(USABLE_COLUMN);
-    }
+  // The canvas is the element that must not be pushed: it takes what is left, and it may
+  // shrink, so a lane that ignores its cap still cannot squeeze the model off the screen.
+  test('the canvas is the flexible one, and it is allowed to shrink', () => {
+    expect(source).toMatch(/\.viewport\{[^}]*flex:1/);
+    expect(source).toMatch(/\.viewport\{[^}]*min-height:0/);
   });
 
-  // One owner for the rule. A second cap on the card itself would measure against the
-  // column's auto height, do nothing, and look exactly like the thing that was holding
-  // the card out of the middle of the window.
+  // One owner for the rule. A second cap on the card itself would measure against a lane
+  // whose height is only a maximum, do nothing, and look exactly like the thing holding
+  // the card back.
   test('the card declares no cap of its own, so there is only one owner', () => {
     expect(source).not.toMatch(/\.layout-widget(?!\.is-collapsed)[^{}]*\{[^{}]*max-height/);
   });
 
-  // Capping a column is only half of it: whatever it refuses to show has to be
-  // reachable, and the bar with Move / Rotate / Merge / Done — the controls the
-  // card exists for — must not be the part that scrolls away.
+  // Capping a lane is only half of it: whatever it refuses to show has to be reachable,
+  // and the bar with Move / Rotate / Merge / Done — the controls the card exists for —
+  // must not be the part that scrolls away.
   test('scrolls the extras, and never the bar', () => {
+    expect(source).toMatch(/\.viewport-lane-bottom\{[^}]*overflow:auto/);
     expect(source).toMatch(/\.layout-widget:not\(\.is-collapsed\) \.layout-extra\{[^}]*overflow-y:auto/);
     expect(source).not.toMatch(/\.layout-widget:not\(\.is-collapsed\) \.layout-bar\{[^}]*overflow/);
   });

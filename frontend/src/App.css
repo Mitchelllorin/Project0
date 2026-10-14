@@ -133,8 +133,6 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
   .right-panel{right:0}
   .studio-header{padding-left:calc(16px + env(safe-area-inset-left,0px));padding-right:calc(16px + env(safe-area-inset-right,0px))}
   /* Thumb-reachable: lift the dock and panel switches above the home indicator. */
-  .view-dock{bottom:calc(31px + env(safe-area-inset-bottom,0px))}
-  .model-controls{bottom:calc(46px + env(safe-area-inset-bottom,0px))}
 }
 
 /* Short viewports (landscape phones, split-screen). Chrome is compressed so the
@@ -144,8 +142,6 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
   .studio-app{min-height:0;grid-template-rows:60px 42px minmax(0,1fr) calc(22px + env(safe-area-inset-bottom,0px))}
   .panel-title{height:58px;padding:12px 16px}
   .panel-title h2{font-size:15px}
-  .view-dock{bottom:calc(12px + env(safe-area-inset-bottom,0px));height:38px}
-  .model-controls{bottom:calc(34px + env(safe-area-inset-bottom,0px));gap:10px}
   .explode-title{margin-bottom:8px}
 }
 /* Narrow AND short: a phone in landscape or a small tablet split-screen. Only
@@ -293,60 +289,36 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 .connection-error .error-dismiss:hover{background:#ffffff24}
 
 /* ---------------------------------------------------------------------------
-   Floating cards are anchored to the bottom edge, and they can end up taller
-   than it. The controls column that holds the layout card and the explode bar is
-   pinned to the bottom (bottom:46px) and grows *upward* as the view gets narrow
-   and the card's one row wraps into a stack; left unbounded it rises past the
-   top edge of .viewport-wrap, which is overflow:hidden, and the controls you
-   came for get clipped off screen.
+   The layout card grows when its 'More' disclosure opens, and the lane it grows
+   in can end up taller than the lane is allowed to be. That is the lane's problem
+   now, not the card's: `.viewport-lane-bottom` is capped at 45% of the workspace
+   and scrolls, so the model keeps the majority of the window and the controls
+   that do not fit are a scroll away — never a card laid over the run, which is
+   what the per-card cap at the foot of the earlier pass was really protecting.
+   layoutCardCap.test.js measures the lane's cap, and checks that the card
+   declares no cap of its own: a cap on the card would measure against a parent
+   whose height is only a maximum, do nothing, and look like it was holding the
+   line.
 
-   Two caps, and the column obeys the tighter one:
-
-   `calc(100% - 98px)` keeps the whole column inside the 3D area — bottom:46px
-   plus the 27px status bar and a gap, so it rests above the bottom edge.
-
-   `max(112px, calc(50% - 62px))` keeps the *middle of the 3D area* to the
-   model. The column is pinned 46px above the bottom edge, so a cap of half the
-   container height minus that offset and minus a 16px margin holds the top of
-   the stack below the vertical centre with room to spare — the centre is where a
-   cabinet gets dragged. Opening 'More' at 1024x640 used to put a 298px card
-   across the middle of the kitchen; that is the number this one is for. It also
-   strictly dominates the 58% cap it replaces at every height, so that rule is
-   gone rather than left to shadow this one.
-
-   The 112px floor is the layout bar (51px) plus, under it, the explode bar
-   (~44px) and the 14px gap between them — the two strips now share the corner,
-   so the floor has to hold both or the card gets squeezed under its own bar. On
-   a 3D area shorter than about 344px — a phone held sideways — the floor wins
-   and the column does reach the centre, because there is no height at which it
-   could do otherwise.
-
-   The extras are the part that grows, so they are the part that scrolls: the
-   bar holding Move / Rotate / Merge / Done stays on screen underneath them.
-
-   Both caps are declared on `.model-controls` — the column that pins the
-   layout card and the explode bar to the bottom-left corner, and the thing that
-   actually grows upward. The card itself declares none: a cap on it would
-   measure against a parent whose height is only a maximum, do nothing, and look
-   like it was holding the line. layoutCardCap.test.js measures the column, and
-   checks that the card has no cap left to fight it with.
+   The extras are the part that grows, so they are the part that scrolls inside
+   the card as well — the bar holding Move / Rotate / Merge / Done stays put.
    --------------------------------------------------------------------------- */
 .layout-widget:not(.is-collapsed){display:flex;flex-direction:column}
 .layout-widget:not(.is-collapsed) .layout-extra{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 
-/* Narrow enough that the one-row bar wraps into a column: give the card the full
-   width of the 3D area instead, so it stays a bar and stays short. The collapsed
-   pill is excluded — it must keep hugging its own label, not stretch edge to edge. */
-@media(max-width:900px){.layout-widget:not(.is-collapsed){left:9px;right:9px;max-width:none}}
+/* Narrow enough that the one-row bar wraps: the lane is the full width of the middle
+   column and the card wraps in it, so it stays short. The collapsed pill is excluded —
+   it must keep hugging its own label, not stretch edge to edge. */
+@media(max-width:900px){.layout-widget:not(.is-collapsed){max-width:none}}
 
 /* ==========================================================================
    THE PERIMETER.
 
-   The model is the product, so it gets the window. `.viewport-wrap` is lifted
-   out of the flex row and pinned to fill `.workspace`, and every control that
-   used to be a glass card beside or over it is now type drawn at the edge of
-   the screen — left, right, top, bottom. Nothing is anchored to the middle, and
-   the centre of the window is the kitchen, always.
+   The model is the product, so it gets the window — first pass: everything that
+   used to be a glass card beside or over it became type drawn at the edge of the
+   window, left, right, top and bottom, and nothing at all was anchored to the middle.
+   (Where those strips actually live now is the block at the foot of this file: the
+   edge of the window turned out to be part of the kitchen too.)
 
    Why type instead of glass. A translucent card is still a card: it has an
    edge, a radius and a blur, and it covers the corner of the room it happens to
@@ -355,27 +327,23 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
    triple below. The shadow is what keeps the words readable over a bright
    daylight floor as well as a dark evening one, without a background doing it.
 
-   The overlays read three custom properties — --rail-w, --left-w, --right-w —
-   so they clear the rail and the two side columns at every breakpoint without
-   repeating the arithmetic. Those three are redeclared once each in the media
-   blocks below and nowhere else.
+   One custom property survives all of this — --rail-w, the width of the rail. Nothing
+   reads a --left-w, a --right-w or an --edge-gap any more: those existed so a strip
+   drawn over the model could be kept clear of the columns, and no strip is drawn over
+   the model. They are deleted rather than left declared, so that a rule reaching for
+   one fails loudly instead of quietly meaning nothing.
    ========================================================================== */
 
-:root{--rail-w:61px;--left-w:278px;--right-w:285px;--edge-gap:31px;--edge-ink:#ffffff;--edge-dim:#efede4;--edge-faint:#cfd4c9;--edge-shadow:0 1px 2px #000000f2,0 1px 6px #000000d9,0 0 16px #000000ab;--edge-rule:#ffffff2b}
-@media(max-width:1250px){:root{--rail-w:53px;--left-w:244px;--right-w:255px;--edge-gap:22px}}
-@media(max-width:1000px){:root{--right-w:0px}}
-@media(max-width:700px){:root{--rail-w:44px;--left-w:0px;--edge-gap:18px}}
+:root{--rail-w:61px;--edge-ink:#ffffff;--edge-dim:#efede4;--edge-faint:#cfd4c9;--edge-shadow:0 1px 2px #000000f2,0 1px 6px #000000d9,0 0 16px #000000ab;--edge-rule:#ffffff2b}
+@media(max-width:1250px){:root{--rail-w:53px}}
+@media(max-width:700px){:root{--rail-w:44px}}
 
-/* --- The model owns the window ------------------------------------------ */
-.workspace{display:block;position:relative}
-.viewport-wrap{position:absolute;inset:0;z-index:0;background:none}
-.studio-loading,.document-page{position:absolute;inset:0}
-
-/* --- Everything else is pinned to an edge ------------------------------- */
-.tool-rail,.left-panel,.right-panel{position:absolute;top:0;bottom:0;background:none;border:0;box-shadow:none;color:var(--edge-ink);text-shadow:var(--edge-shadow)}
-.tool-rail{left:0}
+/* --- The rail and the two columns are lanes of their own ---------------- */
+/* The only place --rail-w is still read is the phone slide-over, which steps past the
+   rail it opens from. Everywhere else the three of them are flow columns beside the
+   model, and the block at the foot of the file says so. */
+.tool-rail,.left-panel,.right-panel{background:none;border:0;box-shadow:none;color:var(--edge-ink);text-shadow:var(--edge-shadow)}
 .left-panel{left:var(--rail-w)}
-.right-panel{right:0}
 @media(max-width:700px){.left-panel{left:calc(var(--rail-w) + env(safe-area-inset-left,0px))}}
 
 /* Nothing but type. Every panel background, rule, hairline, blur and radius
@@ -503,46 +471,33 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
    real button — the one place a filled accent still belongs. */
 .studio-dialog .accent-button{background:var(--studio-accent)!important;color:#242719!important;height:36px!important;padding:0 18px!important;border-radius:5px!important;font-weight:500!important}
 
-/* --- Drawn over the model ----------------------------------------------- */
-/* The caption and the corner label clear the *columns*, not just the rail — the
-   left column is the last thing before the model, and text parked beside it has
-   to start where it ends. The right-hand overlays only have to clear the right
-   column, which starts at the rail's mirror of this offset. */
-.viewport-heading{left:calc(var(--rail-w) + var(--left-w) + var(--edge-gap));top:29px}
+/* --- In the lanes, above and below the model ---------------------------- */
+/* None of this is positioned against the window any more. Where these strips sit is
+   owned by the block at the foot of the file — they are items of a lane, and the lane
+   is in the flow of the workspace — so the rules that spaced them off the rail, off
+   the two columns and off the bottom edge are gone rather than left in the file to be
+   overridden. What is left here is what they look like. */
 .viewport-heading h1{color:var(--edge-ink);text-shadow:var(--edge-shadow)}
 .viewport-heading p,.viewport-hint,.viewport-eyebrow,.render-quality{color:var(--edge-dim);text-shadow:var(--edge-shadow)}
 .viewport-hint{color:var(--edge-faint)}
-.viewport-top-tools{right:calc(var(--right-w) + var(--edge-gap));top:28px;gap:12px}
 .viewport-top-tools button{color:var(--edge-dim);padding:7px 0;text-shadow:var(--edge-shadow)}
 .viewport-top-tools button:hover,.viewport-top-tools button.active{color:var(--studio-accent)}
 .viewport-top-tools .tools-dismiss{color:var(--edge-faint)}
 
-/* The camera dock is on the right edge now, under the view tools, where the
-   hand already is. It used to straddle the bottom centre — the one place on
-   the screen the model has to be — so the kitchen sat behind a toolbar. */
-.view-dock{left:auto;right:calc(var(--right-w) + var(--edge-gap));bottom:46px;transform:none;height:auto;padding:0;gap:10px;color:var(--edge-dim);text-shadow:var(--edge-shadow);max-width:calc(100% - var(--rail-w) - var(--right-w) - var(--edge-gap)*2)}
+/* The camera dock is the right-hand end of the lane under the canvas. */
 .view-dock>button{width:auto;height:auto;padding:6px 0;color:var(--edge-dim)}
 .view-dock>button:hover{color:var(--studio-accent)}
 .view-dock>i{height:15px;margin:0 6px;background:var(--edge-rule)}
 .view-segment{gap:16px}
 .view-segment button{background:none;color:var(--edge-faint);padding:6px 0;text-transform:uppercase;font-size:10px;letter-spacing:.12em;border-bottom:1px solid transparent}
 .view-segment button.active{background:none;color:var(--studio-accent);border-bottom-color:var(--studio-accent)}
-.viewport-corner-label{left:calc(var(--rail-w) + var(--left-w) + 22px);color:var(--edge-faint);text-shadow:var(--edge-shadow)}
-.viewport-bottom-right{right:calc(var(--right-w) + 23px);color:var(--edge-faint);text-shadow:var(--edge-shadow)}
+.viewport-corner-label,.viewport-bottom-right{color:var(--edge-faint)}
 .viewport-bottom-right strong{color:var(--edge-ink)}
 
 /* --- The layout controls and the explode bar ---------------------------- */
-/* Both strips live in one column pinned to one corner — the layout card on top,
-   the explode bar under it — so the two can never be drawn over each other, and
-   so the explode is in the workspace even when you are not arranging. Every
-   other floating panel is a stranger to this column: it is the only thing in the
-   bottom-left, and it starts where the left column of type ends, not where the
-   rail does. The right column is subtracted from the cap for the same reason.
-
-   The column is what is pinned 46px off the bottom edge and what grows upward,
-   so it is the column that carries the two height caps that used to sit on the
-   card — see the block above, and layoutCardCap.test.js, which measures these. */
-.model-controls{position:absolute;z-index:6;left:calc(var(--rail-w) + var(--left-w) + 18px);right:auto;bottom:46px;display:flex;flex-direction:column;align-items:flex-start;gap:14px;color:var(--edge-dim);text-shadow:var(--edge-shadow);max-width:min(620px,calc(100% - var(--rail-w) - var(--left-w) - var(--right-w) - 36px));max-height:min(calc(100% - 98px),max(112px,calc(50% - 62px)))}
+/* They are items of the lane under the canvas, side by side, which is what keeps them
+   from being drawn over each other *and* off the model — see the block at the foot of
+   the file for the lane the two of them live in. */
 /* Inside the column the strips are ordinary stacked items: no corner of their
    own to be pinned to, and no cap of their own to compete with the column's. */
 .model-controls>.layout-widget,.model-controls>.explode-controls{position:static;top:auto;left:auto;right:auto;bottom:auto;transform:none;padding:0;max-width:none}
@@ -592,17 +547,85 @@ button,a,.nav a,[role="button"]{touch-action:manipulation}
 
 /* The connection bar was the last thing centred on the screen; an alert is not
    a reason to cover the model, so it reports from the top-right corner. */
-.connection-error{left:auto;right:24px;transform:none}
 
-@media(max-width:900px){.model-controls{left:calc(var(--rail-w) + var(--left-w) + 9px);right:calc(var(--right-w) + 9px);max-width:none}}
+/* ==========================================================================
+   THE MODEL GETS ITS OWN BOX.
+
+   The block above put the chrome at the *edge* of the window, which is not the
+   same thing as out of the way: an edge of the window is still the kitchen. The
+   caption, the tool column, the camera dock, the layout card and the explode bar
+   were all still drawn on top of the cabinets they exist to reveal — and so were
+   the palette and the inspector, which are type over the model too.
+
+   So the workspace is a row of lanes, and every control is an item in one of
+   them:
+
+     [ rail | palette |  caption + view tools   | inspector ]
+     [        |         |  the canvas, alone   |           ]
+     [        |         |  readouts + controls |           ]
+
+   The canvas box holds the canvas and nothing else. That is the whole point: a
+   control cannot land on the model at any window size, because there is nothing
+   in that box to land there. The previous passes were a coordinate problem — keep
+   this strip away from the middle, keep that one clear of the columns — and a
+   coordinate is a thing that goes stale the moment the window changes shape.
+
+   The lanes are type on the studio's own background, with no fills, borders or
+   blurs of their own, so the look is the perimeter's: no panels, only words.
+   ========================================================================== */
+
+/* --- The workspace is those lanes --------------------------------------- */
+/* The connection bar is chrome too, so it takes its own row between the project bar
+   and the workspace instead of floating over the model. The `auto` row collapses to
+   nothing whenever the alert is not there. */
+.studio-app{grid-template-rows:68px 57px auto minmax(0,1fr) 27px}
+.workspace{display:flex;position:relative;overflow:hidden}
+.tool-rail{position:relative;left:auto;right:auto;top:auto;bottom:auto;z-index:auto}
+.left-panel,.right-panel{z-index:auto}
+/* Above the width where they become slide-overs, the two columns are lanes of their
+   own: next to the model, never on it. Below that they are still opt-in panels you
+   open and dismiss, because there is no width for a fourth column. */
+@media(min-width:701px){.left-panel{position:relative;left:auto;right:auto;top:auto;bottom:auto;max-width:none;box-shadow:none}}
+@media(min-width:1001px){.right-panel{position:relative;left:auto;right:auto;top:auto;bottom:auto;box-shadow:none}}
+.viewport-wrap{position:relative;inset:auto;flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:none;isolation:auto}
+.studio-loading,.document-page{position:relative;inset:auto;flex:1;min-width:0}
+.connection-error{position:static;inset:auto;transform:none;width:auto;max-width:none;border-left:0;border-right:0;border-radius:0;justify-content:center}
+
+/* --- The box the model owns: the canvas, and nothing else ---------------- */
+.viewport{position:relative;inset:auto;flex:1;min-height:0;isolation:isolate}
+.viewport>div:has(>canvas){position:absolute!important;inset:0}
+
+/* --- The two lanes ------------------------------------------------------- */
+.viewport-lane{position:relative;flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:14px 26px;padding:14px 22px;color:var(--edge-dim);text-shadow:var(--edge-shadow)}
+.viewport-lane-top{align-items:flex-end;padding-bottom:10px}
+/* The lane under the canvas can grow — opening 'More' on the layout card makes it — so
+   it is capped and it scrolls, in that order: the model keeps the majority of the
+   window and the controls that do not fit are a scroll away, never a card over the run.
+   This is the rule the old per-card cap was really protecting. */
+.viewport-lane-bottom{align-items:flex-end;max-height:min(45%,340px);overflow:auto;overscroll-behavior:contain;padding-top:10px}
+
+/* --- Nothing in a lane is anchored to the window any more ---------------- */
+/* One reset for every strip that used to be pinned over the model: it is an ordinary
+   item of its lane now, and no leftover `position:absolute` or corner offset from the
+   blocks above may reach it — including the ones in the media queries, which is why
+   this comes last and says `inset` as well as the four corners. */
+.viewport-heading,.viewport-top-tools,.view-dock,.model-controls,.viewport-corner-label,.viewport-bottom-right{
+  position:static;inset:auto;left:auto;right:auto;top:auto;bottom:auto;transform:none;
+  max-width:none;min-width:0;width:auto;height:auto;margin:0;padding:0;z-index:auto;
+  pointer-events:auto;background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.viewport-lane-top .viewport-heading{margin-right:auto}
+.viewport-lane-top .viewport-top-tools{flex-direction:row;flex-wrap:wrap;align-items:center;gap:18px;margin-left:auto;padding:0}
+.viewport-lane-bottom .view-dock{margin-left:auto}
+.viewport-lane-bottom .viewport-bottom-right{text-align:right}
+/* In a lane the card and the bar sit side by side, and the lane is what wraps. */
+.model-controls{flex-direction:row;flex-wrap:wrap;align-items:flex-end;gap:10px 26px;max-height:none}
+
 @media(max-width:700px){
-  .viewport-heading{left:calc(var(--rail-w) + 18px);top:23px}
-  .viewport-top-tools{right:12px}
-  .view-dock{right:12px;bottom:44px}
-  .model-controls{left:calc(var(--rail-w) + 12px)}
-  .viewport-corner-label{left:calc(var(--rail-w) + 14px)}
-  .connection-error{right:12px;max-width:calc(100% - 24px)}
-}@media(max-height:640px){
-  .view-dock{bottom:34px}
-  .model-controls{bottom:34px}
+  .studio-app{grid-template-rows:106px 49px auto minmax(0,1fr) calc(23px + env(safe-area-inset-bottom,0px))}
+  .viewport-lane{padding:12px 14px;gap:10px 16px}
+  .connection-error{padding:11px 14px;gap:14px}
+}
+@media(max-height:640px){
+  .studio-app{grid-template-rows:60px 42px auto minmax(0,1fr) calc(22px + env(safe-area-inset-bottom,0px))}
+  .viewport-lane{padding:9px 12px;gap:8px 14px}
 }
